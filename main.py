@@ -7,12 +7,9 @@ from constants import *
 from retirement import season_end_retirements
 from transfersAI import ai_transfers
 from playerCost import est_cost_eur
+from matchEngineSchedules import *
 
 
-
-# =========================
-# UTILITIES
-# =========================
 def season_dates(year):
     """Return (TM_OPEN, TM_CLOSE, PROCESSING_DAY, SEASON_START, SEASON_END) for a given starting year."""
     tm_open = date(year, 6, 16)
@@ -38,32 +35,10 @@ def yesno(msg):
     return input(msg).strip().lower().startswith("y")
 
 
-def spread_pick(dates, k):
-    """Evenly pick k entries across date list."""
-    n = len(dates)
-    if k <= 1:
-        return [dates[0]] if k == 1 else []
-    out = []
-    for i in range(k):
-        idx = int(round(i * (n - 1) / (k - 1)))
-        out.append(dates[idx])
-    return out
-
-
-def frisa_dates(start, end):
-    d = start
-    while d <= end:
-        if d.weekday() in (4, 5):  # Fri, Sat
-            yield d
-        d += timedelta(days=1)
-
-
 def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
-# =========================
-# DOMAIN OBJECTS
-# =========================
+
 class Player:
     def __init__(self, name, pos, nation, age, rating, potential_plus):
         self.name = name
@@ -207,9 +182,6 @@ class Team:
         self.budget += amount
 
 
-# =========================
-# SQUAD GENERATION HELPERS
-# =========================
 def generate_rating_set(n, target_avg, spread=4.0):
     arr = [clamp(round(random.gauss(target_avg, spread)), 75, 89) for _ in range(n)]
     want = target_avg * n
@@ -240,100 +212,6 @@ def suggest_bench_positions(formation, size):
     return out
 
 
-# =========================
-# MATCH ENGINE
-# =========================
-def match_probabilities(rA, rB, venue):
-    if venue == "homeA":
-        rA += 1.5
-        rB -= 1.5
-    elif venue == "homeB":
-        rB += 1.5
-        rA -= 1.5
-    gap = rA - rB
-    p_draw = 0.25 if abs(gap) <= 2 else 0.15
-
-    def sigmoid(x):
-        return 1 / (1 + pow(2.71828, -x))
-
-    pA = sigmoid(gap / 6) * (1 - p_draw)
-    pB = (1 - p_draw) - pA
-    return pA, p_draw, pB
-
-
-def result_score(a_wins):
-    if a_wins is True:
-        gA = random.choice([1, 2, 2, 3, 3, 4])
-        gB = random.choice([0, 0, 1, 1, 2])
-        if gB >= gA:
-            gB = max(0, gA - 1)
-    elif a_wins is False:
-        gB = random.choice([1, 2, 2, 3, 3, 4])
-        gA = random.choice([0, 0, 1, 1, 2])
-        if gA >= gB:
-            gA = max(0, gB - 1)
-    else:
-        g = random.choice([0, 1, 1, 2, 2])
-        return g, g
-    return gA, gB
-
-
-_neutral_idx = 0
-
-
-def simulate_match(teamA, teamB, venue, when):
-    rA = teamA.avg_rating()
-    rB = teamB.avg_rating()
-    pA, pD, pB = match_probabilities(rA, rB, venue)
-    roll = random.random()
-    if roll < pA:
-        gA, gB = result_score(True)
-        teamA.points += 3
-    elif roll < pA + pD:
-        gA, gB = result_score(None)
-        teamA.points += 1
-        teamB.points += 1
-    else:
-        gA, gB = result_score(False)
-        teamB.points += 3
-    teamA.gf += gA
-    teamA.ga += gB
-    teamB.gf += gB
-    teamB.ga += gA
-
-
-# =========================
-# SCHEDULING
-# =========================
-def all_pairs(teams):
-    for i in range(len(teams)):
-        for j in range(i + 1, len(teams)):
-            yield teams[i], teams[j]
-
-
-def build_four_meetings(teams):
-    fixtures = []
-    for A, B in all_pairs(teams):
-        fixtures.extend([
-            (A, B, "homeA"), (A, B, "homeA"),
-            (A, B, "homeB"), (A, B, "homeB"),
-        ])
-    return fixtures
-
-
-def assign_dates(fixtures, season_start, season_end):
-    all_weekend = list(frisa_dates(season_start, season_end))
-    if len(all_weekend) < len(fixtures):
-        raise RuntimeError("Not enough Fri/Sat dates to host all matches.")
-    picked = spread_pick(all_weekend, len(fixtures))
-    scheduled = list(zip(picked, fixtures))
-    scheduled.sort(key=lambda x: x[0])
-    return scheduled
-
-
-# =========================
-# INJURIES / RETIREMENTS
-# =========================
 def assign_season_injuries(team, season_start, season_end):
     n = random.randint(3, 5)
     for _ in range(n):
@@ -354,9 +232,7 @@ def assign_season_injuries(team, season_start, season_end):
             team.bench.remove(who)
             team.reserves.append(who)
 
-# =========================
-# TRANSFER MARKET
-# =========================
+
 def make_free_agent_pool(num=35):
     pool = []
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
@@ -475,9 +351,6 @@ def user_transfers(team, free_agents):
             team.receive(price)
 
 
-# =========================
-# SEASON PROCESSING
-# =========================
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
 def apply_retirements(teams):
@@ -504,11 +377,11 @@ def process_rewards_penalties(table):
     for pos, t in enumerate(table, start=1):
         if pos == t.objective + 1:
             t.budget = int(t.budget * 0.85)
-    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 5]
+    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 7]
     if eligible:
         lucky = random.choice(eligible)
-        lucky.receive(50)
-        print(f"\nLucky Club: {lucky.name} receives €50M")
+        lucky.receive(60)
+        print(f"\nLucky Club: {lucky.name} receives €60M")
 
 
 def next_season_base_budget(t):
@@ -566,8 +439,6 @@ def organize_squad(team):
     team.reserves = reserves
 
 
-
-
 # =========================
 # MAIN FLOW (CONTINUOUS SEASONS)
 # =========================
@@ -603,9 +474,7 @@ def main():
         # Top up youth (fill bench/reserve) at season start
         for t in teams:
             t.top_up_youth(is_user=(t is user))
-                # Print your roster before the transfer window
         
-
         # Transfer window
         print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
         fa = make_free_agent_pool(35)

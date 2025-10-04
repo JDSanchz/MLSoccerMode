@@ -42,6 +42,11 @@ NAME_BANK = {
                  "Felipe","Julián","Camilo","Miguel","David","Esteban","Brayan","Cristian","Diego","Jorge","Mauricio","Kevin"],
         "last": ["García","Martínez","González","Rodríguez","López","Hernández","Pérez","Sánchez","Ramírez","Torres","Castro","Vargas"]
     },
+    "Mexico": {
+    "male": ["Santiago","Mateo","Sebastián","Emiliano","Diego","Leonardo","Daniel","Alejandro","Miguel","Fernando",
+             "José","Antonio","Carlos","Luis","Jorge","Ángel","Ricardo","Adrián","Eduardo","Ramón","Iván","Manuel"],
+    "last": ["Hernández","García","Martínez","López","González","Rodríguez","Pérez","Sánchez","Ramírez","Cruz","Flores","Vargas"]
+},
     "Uruguay": {
         "male": ["Thiago","Santiago","Bruno","Mateo","Agustín","Benjamín","Emiliano","Diego","Facundo","Juan",
                  "Nicolás","Martín","Matías","Sebastián","Lucas","Federico","Gonzalo","Maximiliano","Franco","Rodrigo","Pablo","Álvaro"],

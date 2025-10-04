@@ -4,6 +4,8 @@ TEAMS_INIT = [
     {"name": "Barcelona",      "avg": 86, "budget": 100, "objective": 2, "formation": "4-3-3", "stadium": "Spotify Camp Nou"},
     {"name": "Real Madrid",    "avg": 86, "budget": 180, "objective": 2, "formation": "4-4-2", "stadium": "Santiago Bernabéu Stadium"},
     {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 2, "formation": "4-3-3", "stadium": "Allianz Arena"},
+    {"name": "America",        "avg": 80, "budget": 40, "objective": 5, "formation": "4-4-2", "stadium": "El Nido"},
+    {"name": "Ajax",            "avg": 82, "budget": 35, "objective": 4, "formation": "4-3-3", "stadium": "Ajax Arena"},
 ]
 
 ORIGINS = {
@@ -12,6 +14,8 @@ ORIGINS = {
     "Barcelona": ["Spain","United States","Argentina","Netherlands","Chile"],
     "Real Madrid": ["Spain","England","Brazil","Belgium","Argentina"],
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
+    "America": ["Mexico","Brazil","Uruguay","Chile","Colombia"],
+    "Ajax": ["Netherlands","United States","Argentina","Mexico"],
 }
 
 FORMATIONS = {
