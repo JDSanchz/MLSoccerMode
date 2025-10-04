@@ -90,7 +90,6 @@ class Player:
             drop = random.randint(0, 4)
             self.rating = max(50, self.rating - drop)
         self.age += 1
-        # No contracts — only retirement logic applies elsewhere
 
 
 class Team:
@@ -302,11 +301,6 @@ def simulate_match(teamA, teamB, venue, when):
     teamB.gf += gB
     teamB.ga += gA
 
-    # Only HOME/AWAY now
-    label = "HOME" if venue == "homeA" else "AWAY"
-    venue_name = teamA.stadium if venue == "homeA" else teamB.stadium
-    print(f"{when.isoformat()} [{label}] {teamA.name} {gA}-{gB} {teamB.name} @ {venue_name}")
-
 
 # =========================
 # SCHEDULING
@@ -419,32 +413,32 @@ def user_transfers(team, free_agents):
         if ans != "y":
             break
 
-        # If roster full, force a release from Bench/Reserves to free a slot
+        freed_slot = None  # "bench" or "reserves"
+
         if roster_count(team) >= roster_capacity(team):
-            candidates = team.bench + team.reserves   # starters are protected
+            candidates = team.bench + team.reserves
             if not candidates:
                 print("Roster is full and you have no Bench/Reserves to release.")
                 continue
 
-            # Lowest 10 by market value
             lowest = sorted(candidates, key=lambda x: x.value())[:min(10, len(candidates))]
             print("Roster full. Choose a Bench/Reserve to release (lowest by value):")
             for i, p in enumerate(lowest):
                 print(f"  {i+1}. {p.pos} {p.name} {p.rating} OVR  Age {p.age}  Value €{p.value():,}")
             k = prompt_int(f"Release which (1..{len(lowest)}): ", 1, len(lowest)) - 1
             victim = lowest[k]
-            fee = int(victim.value() * 0.12)
+            fee = max(1, int(round(victim.value() * 0.12)))  # never zero fee
             if team.pay(fee):
                 if victim in team.bench:
-                    team.bench.remove(victim)
+                    team.bench.remove(victim); freed_slot = "bench"
                 elif victim in team.reserves:
-                    team.reserves.remove(victim)
+                    team.reserves.remove(victim); freed_slot = "reserves"
                 print(f"Released {victim.name} (fee €{fee:,}).")
             else:
                 print("Insufficient funds to pay release fee.")
                 continue
 
-        # Proceed to shortlist and signing (unchanged)
+        # shortlist
         affordable = [p for p in free_agents if p.value() <= team.budget]
         if not affordable:
             print("No affordable free agents right now.")
@@ -463,7 +457,18 @@ def user_transfers(team, free_agents):
             continue
 
         free_agents.remove(signing)
-        if add_to_roster(team, signing):
+
+        # Place the signing EXACTLY where the slot was freed
+        placed = False
+        if freed_slot == "bench" and len(team.bench) < BENCH:
+            team.bench.append(signing); placed = True
+        elif freed_slot == "reserves" and len(team.reserves) < RESERVES:
+            team.reserves.append(signing); placed = True
+        else:
+            # Fallback to usual policy
+            placed = add_to_roster(team, signing)
+
+        if placed:
             print(f"Signed {signing.name} for €{price:,}. Remaining budget €{team.budget:,}")
         else:
             print("No roster slot available unexpectedly; refunding.")
@@ -475,7 +480,16 @@ def user_transfers(team, free_agents):
 # =========================
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
-
+def apply_retirements(teams):
+    print("\nApplying retirements")
+    for t in teams:
+        keep_starters, keep_bench, keep_res = [], [], []
+        for lst, keep in [(t.starters, keep_starters), (t.bench, keep_bench), (t.reserves, keep_res)]:
+            for p in lst:
+                must_retire = (p.age >= 39) or p.retiring_notice  # your policy
+                if not must_retire:
+                    keep.append(p)
+        t.starters, t.bench, t.reserves = keep_starters, keep_bench, keep_res
 
 def process_rewards_penalties(table):
     if len(table) >= 1:
@@ -583,6 +597,8 @@ def main():
         # Reset season stats
         for t in teams:
             t.reset_season_stats()
+        
+        apply_retirements(teams)
 
         # Top up youth (fill bench/reserve) at season start
         for t in teams:
