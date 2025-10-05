@@ -5,7 +5,7 @@ import pandas as pd
 from randomName import random_name
 from constants import *
 from retirement import season_end_retirements
-from transfersAI import ai_transfers
+from transfersAI import ai_transfers, champion_poach_user
 from playerCost import est_cost_eur
 from matchEngineSchedules import *
 
@@ -89,7 +89,6 @@ class Team:
         self.ga = 0
         for p in self.all_players():
             p.injured_until = None
-            p.retiring_notice = False
 
     def all_players(self):
         return self.starters + self.bench + self.reserves
@@ -233,7 +232,7 @@ def assign_season_injuries(team, season_start, season_end):
             team.reserves.append(who)
 
 
-def make_free_agent_pool(num=35):
+def make_free_agent_pool(num=45):
     pool = []
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
     for _ in range(num):
@@ -279,76 +278,102 @@ def add_to_roster(team, player):
         return True
     return False  # No space anywhere
 
+def preseason_menu() -> int:
+    print("\nWhat do you want to do?")
+    print("  1) See Squad / End Contracts")
+    print("  2) Transfer Hub")
+    print("  3) Continue to next season")
+    return prompt_int("Choice (1-3): ", 1, 3)
+
+
+def show_player_list(label, players):
+    print(f"\n{label}:")
+    if not players:
+        print("  (none)")
+        return
+    for i, p in enumerate(players, 1):
+        # Use p.flag() if you added it; else fall back to p.nation
+        flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
+        print(f"  {i:>2}. {p.pos:<3} {p.name:<22} {flag}  {p.rating} OVR  {p.age}y  Value €{p.value():,}")
+
+def end_contracts_flow(team: "Team"):
+    """
+    Let the user release players from Starters/Bench/Reserves.
+    Uses the same 12% release fee logic as transfers.
+    """
+    while True:
+        print("\n=== See Squad / End Contracts ===")
+        show_player_list("Starters", team.starters)
+        show_player_list("Bench", team.bench)
+        show_player_list("Reserves", team.reserves)
+
+        if not yesno("\nRelease someone? (y/n): "):
+            break
+
+        print("\nPick a list to release from:")
+        print("  1) Starters")
+        print("  2) Bench")
+        print("  3) Reserves")
+        lst_choice = prompt_int("List (1-3): ", 1, 3)
+
+        pool = team.starters if lst_choice == 1 else team.bench if lst_choice == 2 else team.reserves
+        if not pool:
+            print("That list is empty.")
+            continue
+
+        show_player_list("Selected list", pool)
+        idx = prompt_int(f"Release which (1..{len(pool)}): ", 1, len(pool)) - 1
+        victim = pool[idx]
+        fee = max(1, int(round(victim.value() * 0.12)))
+
+        print(f"Releasing {victim.name} will cost €{fee:,}. Current budget €{team.budget:,}.")
+        if yesno("Proceed? (y/n): "):
+            if team.pay(fee):
+                pool.pop(idx)
+                print(f"Released {victim.name}. New budget €{team.budget:,}.")
+            else:
+                print("Insufficient funds to pay release fee.")
+        # loop continues so they can release multiple or exit
 
 def user_transfers(team, free_agents):
     print(f"\nYour budget: €{team.budget:,}")
-    print("Sign as many as you want. If your roster is full, you must release a Bench or Reserve first (release fee = 12% of value).")
+    print("Sign as many players as you want. All new signings go directly into the Reserves list.")
 
     while free_agents:
         ans = input("Make a signing? (y/n): ").strip().lower()
         if ans != "y":
             break
 
-        freed_slot = None  # "bench" or "reserves"
-
-        if roster_count(team) >= roster_capacity(team):
-            candidates = team.bench + team.reserves
-            if not candidates:
-                print("Roster is full and you have no Bench/Reserves to release.")
-                continue
-
-            lowest = sorted(candidates, key=lambda x: x.value())[:min(10, len(candidates))]
-            print("Roster full. Choose a Bench/Reserve to release (lowest by value):")
-            for i, p in enumerate(lowest):
-                print(f"  {i+1}. {p.pos} {p.name} {p.rating} OVR  Age {p.age}  Value €{p.value():,}")
-            k = prompt_int(f"Release which (1..{len(lowest)}): ", 1, len(lowest)) - 1
-            victim = lowest[k]
-            fee = max(1, int(round(victim.value() * 0.12)))  # never zero fee
-            if team.pay(fee):
-                if victim in team.bench:
-                    team.bench.remove(victim); freed_slot = "bench"
-                elif victim in team.reserves:
-                    team.reserves.remove(victim); freed_slot = "reserves"
-                print(f"Released {victim.name} (fee €{fee:,}).")
-            else:
-                print("Insufficient funds to pay release fee.")
-                continue
-
-        # shortlist
+        # Filter only players within budget
         affordable = [p for p in free_agents if p.value() <= team.budget]
         if not affordable:
             print("No affordable free agents right now.")
             break
 
+        # Show top 12 affordable players
         shortlisted = sorted(affordable, key=lambda x: x.rating, reverse=True)[:12]
         print("\nFree Agents (top affordable):")
-        for i, p in enumerate(shortlisted):
-            print(f"  {i+1:>2}. {p.pos:<3} {p.name:<22} {p.rating} OVR  {p.age}y  Value €{p.value():,}")
+        for i, p in enumerate(shortlisted, 1):
+            flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
+            print(f"  {i:>2}. {p.pos:<3} {p.name:<22} {flag} {p.rating} OVR  {p.age}y  Value €{p.value():,}")
+
+        # Choose player to sign
         k = prompt_int(f"Sign which (1..{len(shortlisted)}): ", 1, len(shortlisted)) - 1
         signing = shortlisted[k]
         price = signing.value()
 
-        if not team.pay(price):
+        # Budget check
+        if team.budget < price:
             print("Insufficient funds.")
             continue
 
+        # Process signing
+        team.pay(price)
         free_agents.remove(signing)
+        team.reserves.append(signing)
 
-        # Place the signing EXACTLY where the slot was freed
-        placed = False
-        if freed_slot == "bench" and len(team.bench) < BENCH:
-            team.bench.append(signing); placed = True
-        elif freed_slot == "reserves" and len(team.reserves) < RESERVES:
-            team.reserves.append(signing); placed = True
-        else:
-            # Fallback to usual policy
-            placed = add_to_roster(team, signing)
-
-        if placed:
-            print(f"Signed {signing.name} for €{price:,}. Remaining budget €{team.budget:,}")
-        else:
-            print("No roster slot available unexpectedly; refunding.")
-            team.receive(price)
+        print(f"Signed {signing.name} ({signing.nation}) for €{price:,}. Added to Reserves.")
+        print(f"Remaining budget: €{team.budget:,}")
 
 
 def standings_table(teams):
@@ -377,7 +402,7 @@ def process_rewards_penalties(table):
     for pos, t in enumerate(table, start=1):
         if pos == t.objective + 1:
             t.budget = int(t.budget * 0.85)
-    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 7]
+    eligible = [t for i, t in enumerate(table, start=1) if 2 <= i <= 7]
     if eligible:
         lucky = random.choice(eligible)
         lucky.receive(60)
@@ -468,42 +493,44 @@ def main():
         # Reset season stats
         for t in teams:
             t.reset_season_stats()
-        
+
         apply_retirements(teams)
 
         # Top up youth (fill bench/reserve) at season start
         for t in teams:
             t.top_up_youth(is_user=(t is user))
-        
-        # Transfer window
-        print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
-        fa = make_free_agent_pool(35)
 
-        # Transfer order: previous table order (if exists) else alphabetical
-        transfer_order = (prev_table if prev_table else sorted(teams, key=lambda x: x.name))
-        for t in transfer_order:
-            if t is user:
-                continue
-            ai_transfers(t, fa)
+        # ======= Preseason menu (user choice) =======
+        while True:
+            choice = preseason_menu()
+            organize_squad(user)
+            if choice == 1:
+                # See Squad / End Contracts
+                end_contracts_flow(user)
+                organize_squad(user)
+            elif choice == 2:
+                print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
+                fa = make_free_agent_pool(45)
+                champion_poach_user(prev_table, user, chance=0.20)
+                # AI transfer order: previous table order else alphabetical
+                transfer_order = (prev_table if prev_table else sorted(teams, key=lambda x: x.name))
+                for t in transfer_order:
+                    if t is user:
+                        continue
+                    ai_transfers(t, fa)
+                # User transfers
+                user_transfers(user, fa)
 
-        # User transfers
-        user_transfers(user, fa)
-        for t in teams:
-            organize_squad(t)
+                # Re-organize all squads after transfers
+                for t in teams:
+                    organize_squad(t)
+                break
 
-        print("\n=== Your Current Roster ===")
-        print("Starters:")
-        for p in user.starters:
-            print(f"  {p.pos} {p.name} ({p.nation}) - {p.rating} OVR, {p.age}y")
-
-        print("\nBench:")
-        for p in user.bench:
-            print(f"  {p.pos} {p.name} ({p.nation}) - {p.rating} OVR, {p.age}y")
-
-        print("\nReserves:")
-        for p in user.reserves:
-            print(f"  {p.pos} {p.name} ({p.nation}) - {p.rating} OVR, {p.age}y")
-
+            elif choice == 3:
+                # Continue to next season with no changes
+                for t in teams:
+                    organize_squad(t)
+                break  # proceed to injuries & season
 
         # Injuries for the season
         print("\nAssigning season injuries...")
@@ -556,7 +583,5 @@ def main():
         if not yesno("\nRun another season? (y/n): "):
             print("Thanks for playing!")
             break
-
-
 if __name__ == "__main__":
     main()

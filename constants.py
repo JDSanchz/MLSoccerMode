@@ -26,7 +26,7 @@ FORMATIONS = {
 INIT_YEAR = 2025  # first season start (Aug 15, 2025)
 STARTERS = 11
 BENCH = 9
-RESERVES = 5
+RESERVES = 12
 
 # Youth new-season additions
 YOUTH_OVR_MIN, YOUTH_OVR_MAX = 70, 74
