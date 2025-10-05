@@ -63,9 +63,9 @@ def ai_transfers(team, free_agents, order_hint=1):
             free_agents.remove(signing)
             team.reserves.append(signing)  # New players go directly to reserves
 
-def champion_poach_user(prev_table, user, chance=0.20):
-    """20% chance last season's #1 buys a random player from user's top-5 by rating.
-       Champion pays (cost + 10%) to user; champion budget may go negative.
+def champion_poach_user(prev_table, user, chance=0.33):
+    """33% chance last season's #1 buys a random player from user's top-3 by rating.
+       Champion pays (cost + 18%) to user; champion budget may go negative.
     """
     if not prev_table or not user.all_players():
         return
@@ -77,14 +77,14 @@ def champion_poach_user(prev_table, user, chance=0.20):
     if champion is user:
         return
 
-    # Pick random from user's top-5 by rating
-    top5 = sorted(user.all_players(), key=lambda p: p.rating, reverse=True)[:5]
-    if not top5:
+    # Pick random from user's top-3 by rating
+    top3 = sorted(user.all_players(), key=lambda p: p.rating, reverse=True)[:3]
+    if not top3:
         return
-    target = random.choice(top5)
+    target = random.choice(top3)
 
     base_price = est_cost_eur(target.age, target.rating)
-    premium = max(1, int(round(base_price * 0.10)))
+    premium = max(1, int(round(base_price * 0.18)))
     total = base_price + premium
 
     # ALWAYS charge champion (allow negative), ALWAYS credit user
@@ -105,6 +105,6 @@ def champion_poach_user(prev_table, user, chance=0.20):
     flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
     went_negative = " (budget now negative)" if champion.budget < 0 else ""
     print(f"\nPOACH! {champion.name} signed {target.name} {flag} "
-          f"for €{base_price:,} + 10% (€{premium:,}) = €{total:,}.")
+          f"for €{base_price:,} + 18% (€{premium:,}) = €{total:,}.")
     print(f"{user.name} receives €{total:,}. {champion.name} budget: €{champion.budget:,}{went_negative}")
 
