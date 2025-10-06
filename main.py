@@ -235,6 +235,8 @@ def assign_season_injuries(team, season_start, season_end):
 def make_free_agent_pool(num=45):
     pool = []
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
+
+    # Generate pool of random players
     for _ in range(num):
         pos = random.choice(base_positions)
         nation = random.choice([n for arr in ORIGINS.values() for n in arr])
@@ -246,15 +248,52 @@ def make_free_agent_pool(num=45):
         if pot <= rating:
             pot = min(95, rating + 1)  # ensure potential > rating, max 95
 
-        potential_plus = pot - rating  # >= 1
+        potential_plus = pot - rating
         p = Player(name, pos, nation, age, rating, potential_plus)
         pool.append(p)
 
+    # Ensure at least 2 Goalkeepers (GK)
+    gks = [p for p in pool if p.pos == "GK"]
+    while len(gks) < 2:
+        nation = random.choice([n for arr in ORIGINS.values() for n in arr])
+        name = random_name(nation)
+        age = random.randint(16, 36)
+        rating = random.randint(70, 85)
+        pot = min(95, rating + random.randint(1, 5))
+        p = Player(name, "GK", nation, age, rating, pot - rating)
+        pool.append(p)
+        gks.append(p)
+
+    # Keep best 35 players by value (balanced between young and old)
     if len(pool) > 35:
-        young = sorted([p for p in pool if p.age <= 25], key=lambda x: x.rating, reverse=True)[:20]
-        old = sorted([p for p in pool if 26 <= p.age <= 38], key=lambda x: x.rating, reverse=True)[:15]
+        young = sorted(
+            [p for p in pool if p.age <= 25],
+            key=lambda x: x.value(),
+            reverse=True
+        )[:20]
+        old = sorted(
+            [p for p in pool if 26 <= p.age <= 38],
+            key=lambda x: x.value(),
+            reverse=True
+        )[:15]
         pool = young + old
+
+    # Final sort: most costly first
+    pool.sort(key=lambda x: x.value(), reverse=True)
+
+    # Randomly pick 3 players to reveal potential
+    reveal_potential = random.sample(pool, k=min(3, len(pool)))
+    for p in reveal_potential:
+        p.show_potential = True  # mark them with a new attribute
+
+    # Display logic (optional — or integrate where printed elsewhere)
+    print("\nFree Agent Pool (Top by Value):")
+    for i, p in enumerate(pool, start=1):
+        potential_info = f" (POT {p.potential})" if getattr(p, "show_potential", False) else ""
+        print(f"{i:>2}. {p.pos:<3} {p.name:<25} {p.rating} OVR{potential_info}  {p.age}y  Value €{p.value():,}")
+
     return pool
+
 
 
 def roster_capacity(team):
@@ -494,8 +533,6 @@ def main():
         for t in teams:
             t.reset_season_stats()
 
-        apply_retirements(teams)
-
         # Top up youth (fill bench/reserve) at season start
         for t in teams:
             t.top_up_youth(is_user=(t is user))
@@ -531,7 +568,7 @@ def main():
                 for t in teams:
                     organize_squad(t)
                 break  # proceed to injuries & season
-
+        apply_retirements(teams)
         # Injuries for the season
         print("\nAssigning season injuries...")
         for t in teams:
