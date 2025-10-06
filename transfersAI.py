@@ -63,48 +63,57 @@ def ai_transfers(team, free_agents, order_hint=1):
             free_agents.remove(signing)
             team.reserves.append(signing)  # New players go directly to reserves
 
-def champion_poach_user(prev_table, user, chance=0.33):
-    """33% chance last season's #1 buys a random player from user's top-3 by rating.
-       Champion pays (cost + 18%) to user; champion budget may go negative.
+def champion_poach_user(prev_table, user, top_chance=0.33, bottom_chance=0.20, premium_rate=0.18):
+    """
+    1) 33% chance: one of the top-3 NON-user teams poaches a random player from user's top-3 by rating.
+    2) Then roll again: 20% chance one of the bottom-2 NON-user teams poaches a random user reserve
+       (picked from up to 5 reserves rated 75-80).
+    Buyer pays (cost + premium_rate), can go negative; user receives the money.
     """
     if not prev_table or not user.all_players():
         return
 
-    if random.random() >= chance:
-        return
+    def remove_from_user_and_add_to_buyer(target, buyer, premium_rate):
+        base_price = est_cost_eur(target.age, target.rating)
+        premium = max(1, int(round(base_price * premium_rate)))
+        total = base_price + premium
 
-    champion = prev_table[0]
-    if champion is user:
-        return
+        buyer.budget -= total          # allow negatives
+        user.receive(total)
 
-    # Pick random from user's top-3 by rating
-    top3 = sorted(user.all_players(), key=lambda p: p.rating, reverse=True)[:3]
-    if not top3:
-        return
-    target = random.choice(top3)
+        if target in user.starters:
+            user.starters.remove(target)
+        elif target in user.bench:
+            user.bench.remove(target)
+        elif target in user.reserves:
+            user.reserves.remove(target)
 
-    base_price = est_cost_eur(target.age, target.rating)
-    premium = max(1, int(round(base_price * 0.18)))
-    total = base_price + premium
+        buyer.reserves.append(target)
 
-    # ALWAYS charge champion (allow negative), ALWAYS credit user
-    champion.budget -= total          # <-- can go negative
-    user.receive(total)
+        flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
+        neg = " (budget now negative)" if buyer.budget < 0 else ""
+        print(f"\nPOACH! {buyer.name} signed {target.name} {flag} "
+              f"for €{base_price:,} + {int(premium_rate*100)}% (€{premium:,}) = €{total:,}.")
+        print(f"{user.name} receives €{total:,}. {buyer.name} budget: €{buyer.budget:,}{neg}")
 
-    # Remove target from user's lists
-    if target in user.starters:
-        user.starters.remove(target)
-    elif target in user.bench:
-        user.bench.remove(target)
-    elif target in user.reserves:
-        user.reserves.remove(target)
+    # ----- Roll 1: Top-3 teams (not user) poach from user's top-3 by rating -----
+    if random.random() < top_chance:
+        top_three = [t for t in prev_table[:3] if t is not user]
+        if top_three:
+            buyer = random.choice(top_three)
+            top3_players = sorted(user.all_players(), key=lambda p: p.rating, reverse=True)[:3]
+            if top3_players:
+                target = random.choice(top3_players)
+                remove_from_user_and_add_to_buyer(target, buyer, premium_rate)
 
-    # Move to champion reserves
-    champion.reserves.append(target)
-
-    flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
-    went_negative = " (budget now negative)" if champion.budget < 0 else ""
-    print(f"\nPOACH! {champion.name} signed {target.name} {flag} "
-          f"for €{base_price:,} + 18% (€{premium:,}) = €{total:,}.")
-    print(f"{user.name} receives €{total:,}. {champion.name} budget: €{champion.budget:,}{went_negative}")
-
+    # ----- Roll 2: Bottom-2 teams (not user) poach from user reserves (75-80 OVR) -----
+    if random.random() < bottom_chance:
+        bottom_two = [t for t in prev_table[-2:] if t is not user]
+        if bottom_two:
+            buyer = random.choice(bottom_two)
+            pool = [p for p in user.reserves if 75 <= p.rating <= 80]
+            if pool:
+                # Limit the candidate set to 5 if more are available, then pick one
+                candidates = random.sample(pool, k=min(5, len(pool)))
+                target = random.choice(candidates)
+                remove_from_user_and_add_to_buyer(target, buyer, premium_rate)

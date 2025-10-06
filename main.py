@@ -93,9 +93,12 @@ class Team:
     def all_players(self):
         return self.starters + self.bench + self.reserves
 
+    def first_team(self):
+        return self.starters + self.bench  # no reserves
+
     def avg_rating(self):
-        roster = self.all_players()
-        return round(mean([p.rating for p in roster]), 1) if roster else self.avg_target
+        roster = self.first_team()
+        return round(mean(p.rating for p in roster), 1) if roster else self.avg_target
 
     def generate_initial_squad(self):
         # Build XI positions from formation
@@ -278,20 +281,6 @@ def make_free_agent_pool(num=45):
         )[:15]
         pool = young + old
 
-    # Final sort: most costly first
-    pool.sort(key=lambda x: x.value(), reverse=True)
-
-    # Randomly pick 3 players to reveal potential
-    reveal_potential = random.sample(pool, k=min(3, len(pool)))
-    for p in reveal_potential:
-        p.show_potential = True  # mark them with a new attribute
-
-    # Display logic (optional — or integrate where printed elsewhere)
-    print("\nFree Agent Pool (Top by Value):")
-    for i, p in enumerate(pool, start=1):
-        potential_info = f" (POT {p.potential})" if getattr(p, "show_potential", False) else ""
-        print(f"{i:>2}. {p.pos:<3} {p.name:<25} {p.rating} OVR{potential_info}  {p.age}y  Value €{p.value():,}")
-
     return pool
 
 
@@ -374,9 +363,11 @@ def end_contracts_flow(team: "Team"):
                 print("Insufficient funds to pay release fee.")
         # loop continues so they can release multiple or exit
 
+import random
+
 def user_transfers(team, free_agents):
     print(f"\nYour budget: €{team.budget:,}")
-    print("Sign as many players as you want. All new signings go directly into the Reserves list.")
+    print("Sign as many players as you want until you run out of money.")
 
     while free_agents:
         ans = input("Make a signing? (y/n): ").strip().lower()
@@ -389,16 +380,24 @@ def user_transfers(team, free_agents):
             print("No affordable free agents right now.")
             break
 
-        # Show top 12 affordable players
-        shortlisted = sorted(affordable, key=lambda x: x.rating, reverse=True)[:12]
-        print("\nFree Agents (top affordable):")
-        for i, p in enumerate(shortlisted, 1):
+        # Randomly select 30% of players to reveal potential
+        reveal_potential_count = max(1, int(len(affordable) * 0.3))
+        reveal_potential_indices = set(random.sample(range(len(affordable)), reveal_potential_count))
+
+        # Sort affordable players by value (most expensive first)
+        affordable.sort(key=lambda x: x.value(), reverse=True)
+
+        print("\nFree Agents (affordable options):")
+        for i, p in enumerate(affordable, 1):
             flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
-            print(f"  {i:>2}. {p.pos:<3} {p.name:<22} {flag} {p.rating} OVR  {p.age}y  Value €{p.value():,}")
+            line = f"  {i:>2}. {p.pos:<3} {p.name:<28} {flag} {p.rating} OVR  {p.age}y  Value €{p.value():,}"
+            if i - 1 in reveal_potential_indices:
+                line += f"  (Potential: {p.potential})"
+            print(line)
 
         # Choose player to sign
-        k = prompt_int(f"Sign which (1..{len(shortlisted)}): ", 1, len(shortlisted)) - 1
-        signing = shortlisted[k]
+        k = prompt_int(f"Sign which (1..{len(affordable)}): ", 1, len(affordable)) - 1
+        signing = affordable[k]
         price = signing.value()
 
         # Budget check
@@ -413,6 +412,7 @@ def user_transfers(team, free_agents):
 
         print(f"Signed {signing.name} ({signing.nation}) for €{price:,}. Added to Reserves.")
         print(f"Remaining budget: €{team.budget:,}")
+
 
 
 def standings_table(teams):
@@ -469,38 +469,51 @@ def organize_squad(team):
     for pos, c in FORMATIONS[team.formation].items():
         xi_positions += [pos] * c
 
-    # Work on a single pool (all players), then reassign lists cleanly
+    # Single sorted pool
     pool = team.all_players()[:]
-    pool.sort(key=lambda p: p.rating, reverse=True)  # global best-first
+    pool.sort(key=lambda p: p.rating, reverse=True)
 
-    def take_best(match_pos=None):
-        # Prefer exact-position match; fallback to best overall
-        if match_pos:
-            for i,p in enumerate(pool):
-                if p.pos == match_pos:
-                    return pool.pop(i)
+    def take_best_pos(position):
+        for i, p in enumerate(pool):
+            if p.pos == position:
+                return pool.pop(i)
+        return None
+
+    def take_best_any():
         return pool.pop(0) if pool else None
 
-    # Fill starters (exact formation positions)
+    # Fill starters (exact formation positions preferred)
     starters = []
     for pos in xi_positions:
-        pick = take_best(pos)
-        if pick: starters.append(pick)
+        pick = take_best_pos(pos) or take_best_any()
+        if pick:
+            starters.append(pick)
 
-    # Fill bench using suggested bench positions
-    bench_positions = suggest_bench_positions(team.formation, BENCH)
+    # Bench rule:
     bench = []
-    for pos in bench_positions:
-        pick = take_best(pos)
-        if pick: bench.append(pick)
 
-    # Remaining players become reserves
+    # 1) Second GK (best remaining GK)
+    bench_gk = take_best_pos("GK")
+    if bench_gk:
+        bench.append(bench_gk)
+
+    # 2) Next best CB
+    bench_cb = take_best_pos("CB")
+    if bench_cb:
+        bench.append(bench_cb)
+
+    # 3) Fill remaining bench slots by best rating
+    while len(bench) < BENCH and pool:
+        bench.append(take_best_any())
+
+    # Remaining = reserves
     reserves = pool
 
-    # Commit
-    team.starters = starters[:STARTERS]            # safety cap
+    # Commit with safety caps
+    team.starters = starters[:STARTERS]
     team.bench = bench[:BENCH]
     team.reserves = reserves
+
 
 
 # =========================
@@ -548,7 +561,7 @@ def main():
             elif choice == 2:
                 print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
                 fa = make_free_agent_pool(45)
-                champion_poach_user(prev_table, user, chance=0.20)
+                champion_poach_user(prev_table, user)
                 # AI transfer order: previous table order else alphabetical
                 transfer_order = (prev_table if prev_table else sorted(teams, key=lambda x: x.name))
                 for t in transfer_order:
@@ -566,6 +579,7 @@ def main():
             elif choice == 3:
                 # Continue to next season with no changes
                 for t in teams:
+                    champion_poach_user(prev_table, user, chance=0.25)
                     organize_squad(t)
                 break  # proceed to injuries & season
         apply_retirements(teams)
