@@ -560,16 +560,16 @@ def main():
                 organize_squad(user)
             elif choice == 2:
                 print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
-                fa = make_free_agent_pool(45)
+                fa = make_free_agent_pool(30)
                 champion_poach_user(prev_table, user)
                 # AI transfer order: previous table order else alphabetical
                 transfer_order = (prev_table if prev_table else sorted(teams, key=lambda x: x.name))
+                user_transfers(user, fa)
                 for t in transfer_order:
                     if t is user:
                         continue
                     ai_transfers(t, fa)
                 # User transfers
-                user_transfers(user, fa)
 
                 # Re-organize all squads after transfers
                 for t in teams:
