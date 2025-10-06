@@ -22,21 +22,27 @@ def frisa_dates(start, end):
         d += timedelta(days=1)
 
 def match_probabilities(rA, rB, venue):
+    home_adv = 1.4
     if venue == "homeA":
-        rA += 1.5
-        rB -= 1.5
+        rA += home_adv
+        rB -= home_adv
     elif venue == "homeB":
-        rB += 1.5
-        rA -= 1.5
-    gap = rA - rB
-    p_draw = 0.25 if abs(gap) <= 2 else 0.15
+        rB += home_adv
+        rA -= home_adv
+
+    gap = max(-10, min(10, rA - rB))
+    p_draw = max(0.12, min(0.28 - 0.015 * abs(gap), 0.28))
+    T = 5.5
 
     def sigmoid(x):
         return 1 / (1 + pow(2.71828, -x))
 
-    pA = sigmoid(gap / 6) * (1 - p_draw)
+    pA = sigmoid(gap / T) * (1 - p_draw)
     pB = (1 - p_draw) - pA
+    pA = max(pA, 0.12)
+    pB = max(pB, 0.12)
     return pA, p_draw, pB
+
 
 
 def result_score(a_wins):
