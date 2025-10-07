@@ -5,9 +5,11 @@ import pandas as pd
 from randomName import random_name
 from constants import *
 from retirement import season_end_retirements
-from transfersAI import ai_transfers, champion_poach_user
+from transfersAI import ai_transfers, champion_poach_user, trim_ai_reserves
 from playerCost import est_cost_eur
 from matchEngineSchedules import *
+from transfersPlayer import trim_user_reserves
+from prompts import prompt_int
 
 
 def season_dates(year):
@@ -18,17 +20,6 @@ def season_dates(year):
     season_start = date(year, 8, 15)
     season_end = date(year+1, 6, 15)
     return tm_open, tm_close, processing, season_start, season_end
-
-
-def prompt_int(msg, lo, hi):
-    while True:
-        try:
-            v = int(input(msg))
-            if lo <= v <= hi:
-                return v
-        except Exception:
-            pass
-        print(f"Enter a number between {lo} and {hi}.")
 
 
 def yesno(msg):
@@ -409,6 +400,8 @@ def user_transfers(team, free_agents):
         team.pay(price)
         free_agents.remove(signing)
         team.reserves.append(signing)
+        organize_squad(team)
+        trim_user_reserves(team)
 
         print(f"Signed {signing.name} ({signing.nation}) for €{price:,}. Added to Reserves.")
         print(f"Remaining budget: €{team.budget:,}")
@@ -562,18 +555,17 @@ def main():
                 print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
                 fa = make_free_agent_pool(30)
                 champion_poach_user(prev_table, user)
-                # AI transfer order: previous table order else alphabetical
-                transfer_order = (prev_table if prev_table else sorted(teams, key=lambda x: x.name))
+                # AI transfer order is random
+                transfer_order = teams[:]  
+                random.shuffle(transfer_order)
                 user_transfers(user, fa)
                 for t in transfer_order:
                     if t is user:
+                        organize_squad(t)
                         continue
                     ai_transfers(t, fa)
-                # User transfers
-
-                # Re-organize all squads after transfers
-                for t in teams:
                     organize_squad(t)
+                    trim_ai_reserves(t)
                 break
 
             elif choice == 3:

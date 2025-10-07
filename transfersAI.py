@@ -1,25 +1,37 @@
 import random
 from playerCost import est_cost_eur
+from constants import *
 
-def terminate_random_reserve(team):
-    """Randomly remove one of the lowest-rated reserve players from a team."""
-    if not team.reserves:
-        return None  # No reserves available to release
+def trim_ai_reserves(team):
+    over = len(team.reserves) - RESERVES
+    if over <= 0:
+        return
 
-    # Sort reserves by rating (ascending) and pick up to the 4 lowest-rated
-    lowest = sorted(team.reserves, key=lambda x: x.rating)[:min(4, len(team.reserves))]
+    total_fee = 0
 
-    # Randomly choose one of these weaker players to terminate their contract
-    victim = random.choice(lowest)
+    # Step 1: randomly drop 2 of the 5 oldest (up to needed)
+    oldest5 = sorted(team.reserves, key=lambda p: p.age, reverse=True)[:5]
+    k = min(2, over, len(oldest5))
+    victims = set()
+    if k > 0:
+        drop = set(random.sample(oldest5, k))
+        victims.update(drop)
+        over -= k
 
-    # Remove the chosen player from the reserves list
-    team.reserves.remove(victim)
+    # Step 2: drop the rest by lowest market value
+    if over > 0:
+        by_value = sorted(team.reserves, key=lambda p: est_cost_eur(p.age, p.rating))
+        victims.update(by_value[:over])
 
-    # Return the released player (useful for debugging or logging)
-    return victim
+    # Apply the trimming and fees
+    team.reserves = [p for p in team.reserves if p not in victims]
+    total_fee = len(victims) * 1  # €1 per release
+    team.budget -= total_fee
+
+    print(f"{team.name} released {len(victims)} reserve(s), paying €{total_fee} in total fees.")
 
 
-def ai_transfers(team, free_agents, order_hint=1):
+def ai_transfers(team, free_agents):
     """Handle AI-controlled team transfers automatically during transfer windows."""
     # Skip entire window if budget is below €5M at this point
     if team.budget < 5:
@@ -37,9 +49,6 @@ def ai_transfers(team, free_agents, order_hint=1):
             break
 
         if not free_agents:
-            break
-
-        if not terminate_random_reserve(team):
             break
 
         # Spend roughly a fraction of remaining budget for this signing
@@ -61,7 +70,7 @@ def ai_transfers(team, free_agents, order_hint=1):
 
         if team.pay(price):
             free_agents.remove(signing)
-            team.reserves.append(signing)  # New players go directly to reserves
+            team.reserves.append(signing)
 
 def champion_poach_user(prev_table, user, top_chance=0.33, bottom_chance=0.20, premium_rate=0.18):
     """
