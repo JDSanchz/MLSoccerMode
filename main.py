@@ -48,14 +48,18 @@ class Player:
         return self.injured_until is None or when > self.injured_until
 
     def season_progression(self):
-        # Growth till 34: +1..+3 not exceeding potential; decline after
-        if self.age < 34:
+        # Growth till 34: +1..+4 for youth, +1..+3 for others; decline after
+        if self.age < 20:
+            grow = random.randint(1, 4)
+            self.rating = min(self.potential, self.rating + grow)
+        elif self.age < 34:
             grow = random.randint(1, 3)
             self.rating = min(self.potential, self.rating + grow)
         else:
             drop = random.randint(0, 4)
             self.rating = max(50, self.rating - drop)
         self.age += 1
+
 
 
 class Team:
@@ -144,7 +148,8 @@ class Team:
                 ovr = random.randint(YOUTH_OVR_MIN, YOUTH_OVR_MAX)
                 pot_min, pot_max = (YOUTH_POT_USER if is_user else YOUTH_POT_AI)
                 potential_plus = random.randint(max(1, pot_min - ovr), max(1, pot_max - ovr))
-                target_list.append(Player(random_name(nation), pos, nation, age, ovr, potential_plus))
+                name = "❖ " + random_name(nation)  # youth tag here
+                target_list.append(Player(name, pos, nation, age, ovr, potential_plus))
 
         if len(self.bench) < BENCH:
             add_player(self.bench, BENCH - len(self.bench))
