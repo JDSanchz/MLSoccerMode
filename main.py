@@ -139,11 +139,23 @@ class Team:
 
         # Do not touch reserves
 
+    # In class Team
+    def pick_weighted_origin(self):
+        arr = self.origins
+        if not arr:
+            return "Spain"  # fallback if needed
+        if len(arr) == 1:
+            return arr[0]
+        first_w = 0.25
+        rest_w = (1.0 - first_w) / (len(arr) - 1)
+        weights = [first_w] + [rest_w] * (len(arr) - 1)
+        return random.choices(arr, weights=weights, k=1)[0]
+
     def top_up_youth(self, is_user):
         def add_player(target_list, count):
             for _ in range(count):
                 pos = random.choice(["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"])
-                nation = random.choice(self.origins)
+                nation = self.pick_weighted_origin()
                 age = random.randint(YOUTH_AGE_MIN, YOUTH_AGE_MAX)
                 ovr = random.randint(YOUTH_OVR_MIN, YOUTH_OVR_MAX)
                 pot_min, pot_max = (YOUTH_POT_USER if is_user else YOUTH_POT_AI)
@@ -576,7 +588,7 @@ def main():
             elif choice == 3:
                 # Continue to next season with no changes
                 for t in teams:
-                    champion_poach_user(prev_table, user, chance=0.25)
+                    champion_poach_user(prev_table, user, top_chance=0.15, bottom_chance=0, premium_rate=0.25)
                     organize_squad(t)
                 break  # proceed to injuries & season
         apply_retirements(teams)

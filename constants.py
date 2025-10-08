@@ -10,9 +10,9 @@ TEAMS_INIT = [
 
 ORIGINS = {
     "PSG": ["France","Morocco","Argentina","Belgium","Nigeria"],
-    "Liverpool": ["England","France","Brazil","Colombia","Uruguay"],
+    "Liverpool": ["England","France","Brazil","Colombia","Uruguay","Nigeria"],
     "Barcelona": ["Spain","United States","Argentina","Netherlands","Chile"],
-    "Real Madrid": ["Spain","England","Brazil","Belgium","Argentina"],
+    "Real Madrid": ["Spain","England","Brazil","Belgium","Argentina","France"],
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
     "America": ["Mexico","Brazil","Uruguay","Chile","Colombia"],
     "Ajax": ["Netherlands","United States","Argentina","Mexico"],
