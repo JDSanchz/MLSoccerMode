@@ -40,9 +40,24 @@ class Player:
         self.potential = clamp(rating + potential_plus, 70, 95)
         self.injured_until = None
         self.retiring_notice = False
+        self.potential_range = self._assign_potential_range()
+        self.display_potential_range = False
 
     def value(self):
         return est_cost_eur(self.age, self.rating)
+    
+    def _assign_potential_range(self):
+        """Assign a potential range bucket based on the player's potential."""
+        if self.potential <= 72:
+            return "60–72"
+        elif self.potential <= 79:
+            return "73–79"
+        elif self.potential <= 84:
+            return "80–84"
+        elif self.potential <= 90:
+            return "85–90"
+        else:
+            return "90–95"
 
     def is_available_on(self, when):
         return self.injured_until is None or when > self.injured_until
@@ -58,7 +73,13 @@ class Player:
         else:
             drop = random.randint(0, 4)
             self.rating = max(50, self.rating - drop)
+
+        # 35% chance to toggle display_potential_range visibility
+        if random.random() < 0.35:
+            self.display_potential_range = not self.display_potential_range
+
         self.age += 1
+
 
 
 
@@ -327,10 +348,19 @@ def show_player_list(label, players):
     if not players:
         print("  (none)")
         return
+
     for i, p in enumerate(players, 1):
-        # Use p.flag() if you added it; else fall back to p.nation
         flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
-        print(f"  {i:>2}. {p.pos:<3} {p.name:<22} {flag}  {p.rating} OVR  {p.age}y  Value €{p.value():,}")
+        pot_display = f" | Pot {p.potential_range}" if getattr(p, "display_potential_range", False) else ""
+
+        print(
+            f"  {i:>2}. "
+            f"{p.pos:<3} "
+            f"{p.rating:>2} OVR  "
+            f"{p.name:<28} "
+            f"{p.age}y  "
+            f"Value €{p.value():<5,} {pot_display}  {flag}"
+        )
 
 def end_contracts_flow(team: "Team"):
     """
@@ -586,9 +616,9 @@ def main():
                 break
 
             elif choice == 3:
+                champion_poach_user(prev_table, user, top_chance=0.20, bottom_chance=0, premium_rate=0.25)
                 # Continue to next season with no changes
                 for t in teams:
-                    champion_poach_user(prev_table, user, top_chance=0.15, bottom_chance=0, premium_rate=0.25)
                     organize_squad(t)
                 break  # proceed to injuries & season
         apply_retirements(teams)
