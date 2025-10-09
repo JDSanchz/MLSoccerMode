@@ -1,86 +1,17 @@
 import random
-from datetime import date, timedelta
+from datetime import timedelta
 from statistics import mean
-import pandas as pd
 from randomName import random_name
 from constants import *
 from retirement import season_end_retirements
 from transfersAI import ai_transfers, champion_poach_user, trim_ai_reserves
-from playerCost import est_cost_eur
 from matchEngineSchedules import *
-from transfersPlayer import trim_user_reserves
 from prompts import prompt_int
-
-
-def season_dates(year):
-    """Return (TM_OPEN, TM_CLOSE, PROCESSING_DAY, SEASON_START, SEASON_END) for a given starting year."""
-    tm_open = date(year, 6, 16)
-    tm_close = date(year, 8, 13)
-    processing = date(year, 8, 14)
-    season_start = date(year, 8, 15)
-    season_end = date(year+1, 6, 15)
-    return tm_open, tm_close, processing, season_start, season_end
-
-
-def yesno(msg):
-    return input(msg).strip().lower().startswith("y")
-
-
-def clamp(x, lo, hi):
-    return max(lo, min(hi, x))
-
-
-class Player:
-    def __init__(self, name, pos, nation, age, rating, potential_plus):
-        self.name = name
-        self.pos = pos
-        self.nation = nation
-        self.age = age
-        self.rating = rating
-        self.potential = clamp(rating + potential_plus, 70, 95)
-        self.injured_until = None
-        self.retiring_notice = False
-        self.potential_range = self._assign_potential_range()
-        self.display_potential_range = False
-
-    def value(self):
-        return est_cost_eur(self.age, self.rating)
-    
-    def _assign_potential_range(self):
-        """Assign a potential range bucket based on the player's potential."""
-        if self.potential <= 72:
-            return "60–72"
-        elif self.potential <= 79:
-            return "73–79"
-        elif self.potential <= 84:
-            return "80–84"
-        elif self.potential <= 90:
-            return "85–90"
-        else:
-            return "90–95"
-
-    def is_available_on(self, when):
-        return self.injured_until is None or when > self.injured_until
-
-    def season_progression(self):
-        # Growth till 34: +1..+4 for youth, +1..+3 for others; decline after
-        if self.age < 20:
-            grow = random.randint(1, 4)
-            self.rating = min(self.potential, self.rating + grow)
-        elif self.age < 34:
-            grow = random.randint(1, 3)
-            self.rating = min(self.potential, self.rating + grow)
-        else:
-            drop = random.randint(0, 4)
-            self.rating = max(50, self.rating - drop)
-
-        # 25% chance to permanently reveal potential range if not already visible
-        if not getattr(self, "display_potential_range", False) and random.random() < 0.25:
-            self.display_potential_range = True
-
-        self.age += 1
-
-
+from economy import process_rewards_penalties, next_season_base_budget
+from transfersPlayer import user_transfers
+from organizeSquad import organize_squad
+from models.player import Player
+from utils import *
 
 
 class Team:
@@ -402,64 +333,6 @@ def end_contracts_flow(team: "Team"):
                 print("Insufficient funds to pay release fee.")
         # loop continues so they can release multiple or exit
 
-import random
-
-def user_transfers(team, free_agents):
-    print(f"\nYour budget: €{team.budget:,}")
-    print("Sign as many players as you want until you run out of money.")
-
-    # Activate display_potential_range for 50% of all free agents
-    half_count = max(1, int(len(free_agents) * 0.5))
-    selected_for_display = set(random.sample(range(len(free_agents)), half_count))
-    for i, p in enumerate(free_agents):
-        p.display_potential_range = i in selected_for_display
-
-    while free_agents:
-        ans = input("Make a signing? (y/n): ").strip().lower()
-        if ans != "y":
-            break
-
-        affordable = [p for p in free_agents if p.value() <= team.budget]
-        if not affordable:
-            print("No affordable free agents right now.")
-            break
-
-        affordable.sort(key=lambda x: x.value(), reverse=True)
-        print("\nFree Agents (affordable options):")
-
-        for i, p in enumerate(affordable, 1):
-            flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
-            pot_display = f"| Pot {getattr(p, 'potential_range', ''):<7}" if getattr(p, "display_potential_range", False) else " " * 13
-
-            print(
-                f"  {i:>2}. "
-                f"{p.pos:<3} "
-                f"{p.rating:>2} OVR  "
-                f"{p.name:<28} "
-                f"{p.age:>2}y  "
-                f"{pot_display}  "
-                f"Value €{p.value():,}  {flag}"
-            )
-
-        k = prompt_int(f"Sign which (1..{len(affordable)}): ", 1, len(affordable)) - 1
-        signing = affordable[k]
-        price = signing.value()
-
-        if team.budget < price:
-            print("Insufficient funds.")
-            continue
-
-        team.pay(price)
-        free_agents.remove(signing)
-        team.reserves.append(signing)
-        organize_squad(team)
-        trim_user_reserves(team)
-
-        print(f"Signed {signing.name} ({signing.nation}) for €{price:,}. Added to Reserves.")
-        print(f"Remaining budget: €{team.budget:,}")
-
-
-
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
 def apply_retirements(teams):
@@ -473,36 +346,6 @@ def apply_retirements(teams):
                     keep.append(p)
         t.starters, t.bench, t.reserves = keep_starters, keep_bench, keep_res
 
-def process_rewards_penalties(table):
-    if len(table) >= 1:
-        table[0].receive(50)
-    if len(table) >= 2:
-        table[1].receive(40)
-    if len(table) >= 3:
-        table[2].receive(20)
-
-    for pos, t in enumerate(table, start=1):
-        if pos <= t.objective:
-            t.receive(5)
-
-    for pos, t in enumerate(table, start=1):
-        if pos == t.objective + 1:
-            t.budget = int(t.budget * 0.85)
-
-    # Two random clubs from positions 3–10 get €40M each
-    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 10]
-    if len(eligible) >= 2:
-        lucky_two = random.sample(eligible, 2)
-        for lucky in lucky_two:
-            lucky.receive(40)
-            print(f"\nLucky Club: {lucky.name} receives €40M")
-
-
-
-def next_season_base_budget(t):
-    return max(30, int(t.budget * 0.97))
-
-
 def manager_switch_option(user, table):
     bottom3 = table[-3:]
     print("\nBottom 3 teams (eligible to switch):")
@@ -513,59 +356,6 @@ def manager_switch_option(user, table):
         print(f"You now manage {bottom3[k].name}.")
         return bottom3[k]
     return user
-
-def organize_squad(team):
-    # Build required starter slots from formation
-    xi_positions = []
-    for pos, c in FORMATIONS[team.formation].items():
-        xi_positions += [pos] * c
-
-    # Single sorted pool
-    pool = team.all_players()[:]
-    pool.sort(key=lambda p: p.rating, reverse=True)
-
-    def take_best_pos(position):
-        for i, p in enumerate(pool):
-            if p.pos == position:
-                return pool.pop(i)
-        return None
-
-    def take_best_any():
-        return pool.pop(0) if pool else None
-
-    # Fill starters (exact formation positions preferred)
-    starters = []
-    for pos in xi_positions:
-        pick = take_best_pos(pos) or take_best_any()
-        if pick:
-            starters.append(pick)
-
-    # Bench rule:
-    bench = []
-
-    # 1) Second GK (best remaining GK)
-    bench_gk = take_best_pos("GK")
-    if bench_gk:
-        bench.append(bench_gk)
-
-    # 2) Next best CB
-    bench_cb = take_best_pos("CB")
-    if bench_cb:
-        bench.append(bench_cb)
-
-    # 3) Fill remaining bench slots by best rating
-    while len(bench) < BENCH and pool:
-        bench.append(take_best_any())
-
-    # Remaining = reserves
-    reserves = pool
-
-    # Commit with safety caps
-    team.starters = starters[:STARTERS]
-    team.bench = bench[:BENCH]
-    team.reserves = reserves
-
-
 
 # =========================
 # MAIN FLOW (CONTINUOUS SEASONS)
