@@ -1,6 +1,6 @@
 from constants import *
 from statistics import mean
-from player import Player
+from models.player import Player
 import random
 from utils import clamp
 from randomName import random_name
