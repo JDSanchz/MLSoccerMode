@@ -36,58 +36,49 @@ def assign_season_injuries(team, season_start, season_end, is_user=False):
             print(f"  {who.rating} OVR - {who.name:<25} | Out for {days} days")
 
 
-def recover_injuries(team, when):
-    # If a player has recovered by 'when', clear injury; squad will be reorganized
+def recover_injuries(team, when, is_user=False):
+    # If a player has recovered by 'when', clear injury and notify if user
     for p in team.all_players():
         if p.injured_until and when >= p.injured_until:
             p.injured_until = None
+            if is_user:
+                print(f"✅ {p.name} has recovered on {when.isoformat()}")
 
 
+import random
 
 def make_free_agent_pool(num=45):
-    pool = []
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
+    all_origins = [n for arr in ORIGINS.values() for n in arr]
 
-    # Generate pool of random players
-    for _ in range(num):
-        pos = random.choice(base_positions)
-        nation = random.choice([n for arr in ORIGINS.values() for n in arr])
-        name = random_name(nation)
-        age = random.randint(16, 38)
-        rating = random.randint(70, 86)
+    def pick_origin():
+        return random.choice(all_origins)
 
+    def roll_potential(rating):
         pot = random.randint(79, 95)
-        if pot <= rating:
-            pot = min(95, rating + 1)  # ensure potential > rating, max 95
+        return max(rating + 1, pot) if pot <= rating else pot
 
-        potential_plus = pot - rating
-        p = Player(name, pos, nation, age, rating, potential_plus)
-        pool.append(p)
+    def make_player(pos, age_lo, age_hi, rating_lo, rating_hi):
+        nation = pick_origin()
+        age = random.randint(age_lo, age_hi)
+        rating = random.randint(rating_lo, rating_hi)
+        pot = roll_potential(rating)
+        return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
-    # Ensure at least 2 Goalkeepers (GK)
+    # 1) Build initial pool
+    pool = [make_player(random.choice(base_positions), 18, 38, 72, 87) for _ in range(num)]
+
+    # 2) Ensure at least 2 GKs (same potential logic)
     gks = [p for p in pool if p.pos == "GK"]
     while len(gks) < 2:
-        nation = random.choice([n for arr in ORIGINS.values() for n in arr])
-        name = random_name(nation)
-        age = random.randint(16, 36)
-        rating = random.randint(70, 85)
-        pot = min(95, rating + random.randint(1, 5))
-        p = Player(name, "GK", nation, age, rating, pot - rating)
-        pool.append(p)
-        gks.append(p)
+        gk = make_player("GK", 18, 38, 72, 87)
+        pool.append(gk)
+        gks.append(gk)
 
-    # Keep best 35 players by value (balanced between young and old)
+    # 3) Keep best 35 by value (20 young ≤25, 15 older 26–38)
     if len(pool) > 35:
-        young = sorted(
-            [p for p in pool if p.age <= 25],
-            key=lambda x: x.value(),
-            reverse=True
-        )[:20]
-        old = sorted(
-            [p for p in pool if 26 <= p.age <= 38],
-            key=lambda x: x.value(),
-            reverse=True
-        )[:15]
+        young = sorted([p for p in pool if p.age <= 25], key=lambda x: x.value(), reverse=True)[:20]
+        old   = sorted([p for p in pool if 26 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:15]
         pool = young + old
 
     return pool
@@ -178,6 +169,7 @@ def end_contracts_flow(team: "Team"):
             if team.pay(fee):
                 pool.pop(idx)
                 print(f"Released {victim.name}. New budget €{team.budget:,}.")
+                organize_squad(team)
             else:
                 print("Insufficient funds to pay release fee.")
         # loop continues so they can release multiple or exit
@@ -247,7 +239,6 @@ def main():
             if choice == 1:
                 # See Squad / End Contracts
                 end_contracts_flow(user)
-                organize_squad(user)
             elif choice == 2:
                 print(f"\n--- Transfer Window: {TM_OPEN.isoformat()} to {TM_CLOSE.isoformat()} ---")
                 fa = make_free_agent_pool(30)
@@ -287,8 +278,8 @@ def main():
         # Simulate season
         print(f"--- Season {SEASON_START} to {SEASON_END} ---\n")
         for when, (A, B, venue) in scheduled:
-            recover_injuries(A, when)
-            recover_injuries(B, when)
+            recover_injuries(A, when, is_user=(A is user))
+            recover_injuries(B, when, is_user=(B is user))
             organize_squad(A)
             organize_squad(B)
             simulate_match(A, B, venue, when)
