@@ -1,13 +1,15 @@
 from constants import FORMATIONS, BENCH, STARTERS
 
-def organize_squad(team):
-    # Build required starter slots from formation
+def organize_squad(team, on=None):
+    def available(p):
+        return p.injured_until is None if on is None else (p.injured_until is None or on > p.injured_until)
+
     xi_positions = []
     for pos, c in FORMATIONS[team.formation].items():
         xi_positions += [pos] * c
 
-    # Single sorted pool
-    pool = team.all_players()[:]
+    injured = [p for p in team.all_players() if not available(p)]
+    pool = [p for p in team.all_players() if available(p)]
     pool.sort(key=lambda p: p.rating, reverse=True)
 
     def take_best_pos(position):
@@ -19,34 +21,22 @@ def organize_squad(team):
     def take_best_any():
         return pool.pop(0) if pool else None
 
-    # Fill starters (exact formation positions preferred)
     starters = []
     for pos in xi_positions:
         pick = take_best_pos(pos) or take_best_any()
         if pick:
             starters.append(pick)
 
-    # Bench rule:
     bench = []
-
-    # 1) Second GK (best remaining GK)
-    bench_gk = take_best_pos("GK")
-    if bench_gk:
-        bench.append(bench_gk)
-
-    # 2) Next best CB
-    bench_cb = take_best_pos("CB")
-    if bench_cb:
-        bench.append(bench_cb)
-
-    # 3) Fill remaining bench slots by best rating
+    gk = take_best_pos("GK")
+    if gk: bench.append(gk)
+    cb = take_best_pos("CB")
+    if cb: bench.append(cb)
     while len(bench) < BENCH and pool:
         bench.append(take_best_any())
 
-    # Remaining = reserves
-    reserves = pool
+    reserves = pool + injured  # injured always end up here
 
-    # Commit with safety caps
     team.starters = starters[:STARTERS]
     team.bench = bench[:BENCH]
     team.reserves = reserves

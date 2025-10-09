@@ -13,25 +13,35 @@ from models.player import Player
 from models.team import Team
 from utils import *
 
-def assign_season_injuries(team, season_start, season_end):
-    n = random.randint(3, 5)
-    for _ in range(n):
-        who = random.choice(team.all_players())
+def assign_season_injuries(team, season_start, season_end, is_user=False):
+    avg = team.avg_rating()
+    n = random.randint(2, 3) if avg < 85 else random.randint(4, 7)
+    pool = team.all_players()
+    if not pool:
+        return
+
+    picks = random.sample(pool, k=min(n, len(pool)))
+    span = (season_end - season_start).days
+
+    if is_user:
+        print(f"\n🩹 {team.name} Season Injuries:")
+
+    for who in picks:
         days = random.randint(20, 280)
-        span = (season_end - season_start).days
-        if span <= days:
-            start_offset = 0
-        else:
-            start_offset = random.randint(0, span - days)
+        start_offset = 0 if span <= days else random.randint(0, span - days)
         when = season_start + timedelta(days=start_offset)
         who.injured_until = when + timedelta(days=days)
-        # move to reserves if currently in XI/bench (display-only)
-        if who in team.starters:
-            team.starters.remove(who)
-            team.reserves.append(who)
-        elif who in team.bench:
-            team.bench.remove(who)
-            team.reserves.append(who)
+
+        if is_user:
+            print(f"  {who.rating} OVR - {who.name:<25} | Out for {days} days")
+
+
+def recover_injuries(team, when):
+    # If a player has recovered by 'when', clear injury; squad will be reorganized
+    for p in team.all_players():
+        if p.injured_until and when >= p.injured_until:
+            p.injured_until = None
+
 
 
 def make_free_agent_pool(num=45):
@@ -265,7 +275,7 @@ def main():
         # Injuries for the season
         print("\nAssigning season injuries...")
         for t in teams:
-            assign_season_injuries(t, SEASON_START, SEASON_END)
+            assign_season_injuries(t, SEASON_START, SEASON_END, is_user=(t is user))
         print("Injuries assigned.\n")
 
         # Fixtures: each pair 4 times (2x home, 2x away)
@@ -277,7 +287,12 @@ def main():
         # Simulate season
         print(f"--- Season {SEASON_START} to {SEASON_END} ---\n")
         for when, (A, B, venue) in scheduled:
+            recover_injuries(A, when)
+            recover_injuries(B, when)
+            organize_squad(A)
+            organize_squad(B)
             simulate_match(A, B, venue, when)
+
 
         # Final table
         table = standings_table(teams)
