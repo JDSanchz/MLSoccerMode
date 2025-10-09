@@ -74,9 +74,9 @@ class Player:
             drop = random.randint(0, 4)
             self.rating = max(50, self.rating - drop)
 
-        # 35% chance to toggle display_potential_range visibility
-        if random.random() < 0.35:
-            self.display_potential_range = not self.display_potential_range
+        # 25% chance to permanently reveal potential range if not already visible
+        if not getattr(self, "display_potential_range", False) and random.random() < 0.25:
+            self.display_potential_range = True
 
         self.age += 1
 
@@ -351,15 +351,16 @@ def show_player_list(label, players):
 
     for i, p in enumerate(players, 1):
         flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
-        pot_display = f" | Pot {p.potential_range}" if getattr(p, "display_potential_range", False) else ""
+        pot_display = f"| Pot {p.potential_range:<7}" if getattr(p, "display_potential_range", False) else " " * 13
 
         print(
             f"  {i:>2}. "
             f"{p.pos:<3} "
             f"{p.rating:>2} OVR  "
             f"{p.name:<28} "
-            f"{p.age}y  "
-            f"Value €{p.value():<5,} {pot_display}  {flag}"
+            f"{p.age:>2}y  "
+            f"{pot_display}  "
+            f"Value €{p.value():,}  {flag}"
         )
 
 def end_contracts_flow(team: "Team"):
@@ -407,43 +408,47 @@ def user_transfers(team, free_agents):
     print(f"\nYour budget: €{team.budget:,}")
     print("Sign as many players as you want until you run out of money.")
 
+    # Activate display_potential_range for 50% of all free agents
+    half_count = max(1, int(len(free_agents) * 0.5))
+    selected_for_display = set(random.sample(range(len(free_agents)), half_count))
+    for i, p in enumerate(free_agents):
+        p.display_potential_range = i in selected_for_display
+
     while free_agents:
         ans = input("Make a signing? (y/n): ").strip().lower()
         if ans != "y":
             break
 
-        # Filter only players within budget
         affordable = [p for p in free_agents if p.value() <= team.budget]
         if not affordable:
             print("No affordable free agents right now.")
             break
 
-        # Randomly select 30% of players to reveal potential
-        reveal_potential_count = max(1, int(len(affordable) * 0.3))
-        reveal_potential_indices = set(random.sample(range(len(affordable)), reveal_potential_count))
-
-        # Sort affordable players by value (most expensive first)
         affordable.sort(key=lambda x: x.value(), reverse=True)
-
         print("\nFree Agents (affordable options):")
+
         for i, p in enumerate(affordable, 1):
             flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
-            line = f"  {i:>2}. {p.pos:<3} {p.name:<28} {flag} {p.rating} OVR  {p.age}y  Value €{p.value():,}"
-            if i - 1 in reveal_potential_indices:
-                line += f"  (Potential: {p.potential})"
-            print(line)
+            pot_display = f"| Pot {getattr(p, 'potential_range', ''):<7}" if getattr(p, "display_potential_range", False) else " " * 13
 
-        # Choose player to sign
+            print(
+                f"  {i:>2}. "
+                f"{p.pos:<3} "
+                f"{p.rating:>2} OVR  "
+                f"{p.name:<28} "
+                f"{p.age:>2}y  "
+                f"{pot_display}  "
+                f"Value €{p.value():,}  {flag}"
+            )
+
         k = prompt_int(f"Sign which (1..{len(affordable)}): ", 1, len(affordable)) - 1
         signing = affordable[k]
         price = signing.value()
 
-        # Budget check
         if team.budget < price:
             print("Insufficient funds.")
             continue
 
-        # Process signing
         team.pay(price)
         free_agents.remove(signing)
         team.reserves.append(signing)
@@ -475,21 +480,27 @@ def process_rewards_penalties(table):
         table[1].receive(40)
     if len(table) >= 3:
         table[2].receive(20)
+
     for pos, t in enumerate(table, start=1):
         if pos <= t.objective:
-            t.receive(15)
+            t.receive(5)
+
     for pos, t in enumerate(table, start=1):
         if pos == t.objective + 1:
             t.budget = int(t.budget * 0.85)
-    eligible = [t for i, t in enumerate(table, start=1) if 2 <= i <= 7]
-    if eligible:
-        lucky = random.choice(eligible)
-        lucky.receive(60)
-        print(f"\nLucky Club: {lucky.name} receives €60M")
+
+    # Two random clubs from positions 3–10 get €40M each
+    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 10]
+    if len(eligible) >= 2:
+        lucky_two = random.sample(eligible, 2)
+        for lucky in lucky_two:
+            lucky.receive(40)
+            print(f"\nLucky Club: {lucky.name} receives €40M")
+
 
 
 def next_season_base_budget(t):
-    return max(35, int(t.budget * 0.97))
+    return max(30, int(t.budget * 0.97))
 
 
 def manager_switch_option(user, table):
@@ -631,7 +642,7 @@ def main():
         # Fixtures: each pair 4 times (2x home, 2x away)
         global _neutral_idx
         _neutral_idx = 0
-        fixtures = build_four_meetings(teams)
+        fixtures = build_home_and_away(teams)
         scheduled = assign_dates(fixtures, SEASON_START, SEASON_END)
 
         # Simulate season

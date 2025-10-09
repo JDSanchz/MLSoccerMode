@@ -30,7 +30,7 @@ NAME_BANK = {
     "England": {
         "male": ["Oliver","Jack","Harry","George","Oscar","Thomas","James","Alfie","Leo","Charlie",
                  "Henry","Archie","Freddie","Theodore","Isaac","Alexander","Joshua","Edward","Samuel","Max","Finley","Joseph"],
-        "last": ["Smith","Jones","Taylor","Brown","Williams","Wilson","Davies","Evans","Thomas","Roberts","Johnson","Walker"]
+        "last": ["Smith","Jones","Taylor","Brown","Williams","Wilson","Davies","Evans","Thomas","Roberts","Kane","Walker"]
     },
     "Brazil": {
         "male": ["Miguel","Arthur","Heitor","Theo","Davi","Bernardo","Gabriel","Pedro","Enzo","Gustavo",
@@ -42,10 +42,15 @@ NAME_BANK = {
                  "Felipe","Julián","Camilo","Miguel","David","Esteban","Brayan","Cristian","Diego","Jorge","Mauricio","Kevin"],
         "last": ["García","Martínez","González","Rodríguez","López","Hernández","Pérez","Sánchez","Ramírez","Torres","Castro","Vargas"]
     },
-    "Mexico": {
-    "male": ["Santiago","Mateo","Sebastián","Emiliano","Diego","Leonardo","Daniel","Alejandro","Miguel","Fernando",
-             "José","Antonio","Carlos","Luis","Jorge","Ángel","Ricardo","Adrián","Eduardo","Ramón","Iván","Manuel"],
-    "last": ["Hernández","García","Martínez","López","González","Rodríguez","Pérez","Sánchez","Ramírez","Cruz","Flores","Vargas"]
+"Mexico": {
+    "male": [
+        "Santiago","Mateo","Sebastián","Emiliano","Diego","Leonardo","Daniel","Alejandro","Miguel","Fernando",
+        "José","Antonio","Carlos","Luis","Jorge","Ángel","Ricardo","Adrián","Eduardo","Ramón","Iván","Manuel",
+        "Cristian","Mauricio","Héctor","Rodrigo"
+    ],
+    "last": [
+        "Hernández","García","Martínez","López","González","Rodríguez","Pérez","Sánchez","Ramírez","Cruz","Flores","Vargas"
+    ]
 },
     "Uruguay": {
         "male": ["Thiago","Santiago","Bruno","Mateo","Agustín","Benjamín","Emiliano","Diego","Facundo","Juan",
@@ -68,6 +73,18 @@ NAME_BANK = {
         "last": ["de Jong","van Dijk","de Vries","van den Berg","Bakker","Visser","Smit","Meijer","Kok","Hendriks","Mulder","Bosch"],
         "prefix": ["van","van der","de","van den"]
     },
+    "Italy": {
+    "male": [
+        "Luca","Marco","Matteo","Giovanni","Francesco","Alessandro","Simone","Andrea",
+        "Antonio","Gabriele","Davide","Stefano","Paolo","Riccardo","Leonardo","Pietro",
+        "Giulio","Tommaso","Federico","Nicola","Daniele","Salvatore"
+    ],
+    "last": [
+        "Rossi","Russo","Ferrari","Esposito","Bianchi","Romano","Colombo","Ricci","Marino",
+        "Greco","Conti","Gallo","Costa","Mancini","Lombardi","Moretti","Barbieri","Rizzo",
+        "Giordano","Lombardo","Santoro","De Luca"
+    ]
+},
     "Chile": {
         "male": ["Benjamín","Matías","Vicente","Agustín","José","Martín","Diego","Tomás","Sebastián","Joaquín",
                  "Felipe","Cristóbal","Franco","Emilio","Andrés","Rafael","Bruno","Mauricio","Nicolás","Ignacio","Gabriel","Hernán"],

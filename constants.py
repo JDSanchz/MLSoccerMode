@@ -6,6 +6,9 @@ TEAMS_INIT = [
     {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 2, "formation": "4-3-3", "stadium": "Allianz Arena"},
     {"name": "America",        "avg": 80, "budget": 40, "objective": 5, "formation": "4-4-2", "stadium": "El Nido"},
     {"name": "Ajax",            "avg": 82, "budget": 35, "objective": 4, "formation": "4-3-3", "stadium": "Ajax Arena"},
+    {"name": "AC Milan",        "avg": 83, "budget": 45, "objective": 3, "formation": "4-4-2", "stadium": "San Siro"},
+    {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 3, "formation": "4-3-3", "stadium": "Stamford Bridge"},
+    {"name": "Porto",            "avg": 82, "budget": 30, "objective": 5, "formation": "4-3-3", "stadium": "Do Dragao"},
 ]
 
 ORIGINS = {
@@ -16,6 +19,9 @@ ORIGINS = {
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
     "America": ["Mexico","Brazil","Uruguay","Chile","Colombia"],
     "Ajax": ["Netherlands","United States","Argentina","Mexico"],
+    "AC Milan": ["Italy","France","Germany","Netherlands","United States"],
+    "Chelsea": ["England","France","Brazil","Netherlands","Uruguay"],
+    "Porto": ["Portugal","France","Brazil","Netherlands","Nigeria"],
 }
 
 FORMATIONS = {
@@ -25,11 +31,11 @@ FORMATIONS = {
 
 INIT_YEAR = 2025  # first season start (Aug 15, 2025)
 STARTERS = 11
-BENCH = 9
-RESERVES = 10
+BENCH = 10
+RESERVES = 11
 
 # Youth new-season additions
 YOUTH_OVR_MIN, YOUTH_OVR_MAX = 70, 74
-YOUTH_AGE_MIN, YOUTH_AGE_MAX = 16, 25
+YOUTH_AGE_MIN, YOUTH_AGE_MAX = 16, 24
 YOUTH_POT_USER = (77, 95)
 YOUTH_POT_AI   = (80, 92)
