@@ -1,6 +1,8 @@
 import random
 from playerCost import est_cost_eur
 from constants import *
+from randomName import random_name
+from models.player import Player
 
 def trim_ai_reserves(team):
     over = len(team.reserves) - RESERVES
@@ -126,3 +128,40 @@ def champion_poach_user(prev_table, user, top_chance=0.33, bottom_chance=0.20, p
                 candidates = random.sample(pool, k=min(5, len(pool)))
                 target = random.choice(candidates)
                 remove_from_user_and_add_to_buyer(target, buyer, premium_rate)
+
+
+def make_free_agent_pool(num=45):
+    base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
+    all_origins = [n for arr in ORIGINS.values() for n in arr]
+
+    def pick_origin():
+        return random.choice(all_origins)
+
+    def roll_potential(rating):
+        pot = random.randint(79, 95)
+        return max(rating + 1, pot) if pot <= rating else pot
+
+    def make_player(pos, age_lo, age_hi, rating_lo, rating_hi):
+        nation = pick_origin()
+        age = random.randint(age_lo, age_hi)
+        rating = random.randint(rating_lo, rating_hi)
+        pot = roll_potential(rating)
+        return Player(random_name(nation), pos, nation, age, rating, pot - rating)
+
+    # 1) Build initial pool
+    pool = [make_player(random.choice(base_positions), 18, 38, 72, 87) for _ in range(num)]
+
+    # 2) Ensure at least 2 GKs (same potential logic)
+    gks = [p for p in pool if p.pos == "GK"]
+    while len(gks) < 2:
+        gk = make_player("GK", 18, 38, 72, 87)
+        pool.append(gk)
+        gks.append(gk)
+
+    # 3) Keep best 35 by value (20 young ≤25, 15 older 26–38)
+    if len(pool) > 35:
+        young = sorted([p for p in pool if p.age <= 25], key=lambda x: x.value(), reverse=True)[:20]
+        old   = sorted([p for p in pool if 26 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:15]
+        pool = young + old
+
+    return pool
