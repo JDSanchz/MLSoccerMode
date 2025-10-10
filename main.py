@@ -12,34 +12,6 @@ from preseason import preseason_loop
 from transfersAI import *
 from transfersPlayer import *
 
-def roster_capacity(team):
-    return STARTERS + BENCH + RESERVES
-
-
-def roster_count(team):
-    return len(team.all_players())
-
-
-def add_to_roster(team, player):
-    # Prefer RESERVES → BENCH → STARTERS (new signings usually start low)
-    if len(team.reserves) < RESERVES:
-        team.reserves.append(player)
-        return True
-    if len(team.bench) < BENCH:
-        team.bench.append(player)
-        return True
-    if len(team.starters) < STARTERS:
-        team.starters.append(player)
-        return True
-    return False  # No space anywhere
-
-def preseason_menu() -> int:
-    print("\nWhat do you want to do?")
-    print("  1) See Squad / End Contracts")
-    print("  2) Transfer Hub")
-    print("  3) Continue to next season")
-    return prompt_int("Choice (1-3): ", 1, 3)
-
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
 def apply_retirements(teams):
