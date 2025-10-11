@@ -74,61 +74,114 @@ def ai_transfers(team, free_agents):
             free_agents.remove(signing)
             team.reserves.append(signing)
 
-def champion_poach_user(prev_table, user, top_chance=0.33, bottom_chance=0.20, premium_rate=0.18):
-    """
-    1) 33% chance: one of the top-3 NON-user teams poaches a random player from user's top-3 by rating.
-    2) Then roll again: 20% chance one of the bottom-2 NON-user teams poaches a random user reserve
-       (picked from up to 5 reserves rated 75-80).
-    Buyer pays (cost + premium_rate), can go negative; user receives the money.
-    """
+def champion_poach_user(
+    prev_table,
+    user,
+    top_chance=0.70,
+    bottom_chance=0.20,
+    premium_rate=0.15,
+    free_roll_chance=0.40
+):
     if not prev_table or not user.all_players():
         return
 
-    # ----- TODO : MAKE THIS MORE FAIR BUT MORE OFTEN -----
-    def remove_from_user_and_add_to_buyer(target, buyer, premium_rate):
-        base_price = est_cost_eur(target.age, target.rating)
-        premium = max(1, int(round(base_price * premium_rate)))
-        total = base_price + premium
+    def est_price_with_premium(player):
+        base = est_cost_eur(player.age, player.rating)
+        prem = max(1, int(round(base * premium_rate)))
+        return base, prem, base + prem
 
-        buyer.budget -= total          # allow negatives
+    def remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=False):
+        if not allow_negative and buyer.budget < total:
+            print(f"\n{buyer.name} wanted {target.name} but cannot afford €{total:,}. No transfer.")
+            return False
+
+        buyer.budget -= total  # may go negative if allow_negative=True
         user.receive(total)
 
-        if target in user.starters:
-            user.starters.remove(target)
-        elif target in user.bench:
-            user.bench.remove(target)
-        elif target in user.reserves:
-            user.reserves.remove(target)
+        for group in (user.starters, user.bench, user.reserves):
+            if target in group:
+                group.remove(target)
+                break
 
         buyer.reserves.append(target)
 
         flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
-        neg = " (budget now negative)" if buyer.budget < 0 else ""
-        print(f"\nPOACH! {buyer.name} signed {target.name} {flag} "
-              f"for €{base_price:,} + {int(premium_rate*100)}% (€{premium:,}) = €{total:,}.")
-        print(f"{user.name} receives €{total:,}. {buyer.name} budget: €{buyer.budget:,}{neg}")
+        neg_note = " (budget now negative)" if buyer.budget < 0 else ""
+        print(
+            f"\nPOACH! {buyer.name} signed {target.name} {flag} "
+            f"for €{base:,} + {int(premium_rate*100)}% (€{prem:,}) = €{total:,}."
+        )
+        print(f"{user.name} receives €{total:,}. {buyer.name} budget: €{buyer.budget:,}{neg_note}")
+        return True
 
-    # ----- Roll 1: Top-3 teams (not user) poach from user's top-3 by rating -----
+    def free_move_from_user_reserves(target, dest_team):
+        # Remove strictly from reserves (per your spec)
+        if target in user.reserves:
+            user.reserves.remove(target)
+        else:
+            # Safety: remove if it slipped into other groups
+            for group in (user.starters, user.bench):
+                if target in group:
+                    group.remove(target)
+                    break
+        dest_team.reserves.append(target)
+        flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
+        print(
+            f"\nFREE TRANSFER: {target.name} {flag} left {user.name} "
+            f"for {dest_team.name} (lowest avg rating: {dest_team.avg_rating():.1f})."
+        )
+
+    def calc_max_potential(p):
+        if hasattr(p, "max_potential"):
+            try:
+                return p.max_potential()
+            except Exception:
+                pass
+        for delta_name in ("potential_delta", "pot_delta", "growth", "potential_growth"):
+            if hasattr(p, delta_name):
+                return p.rating + getattr(p, delta_name)
+        if hasattr(p, "potential"):
+            pot = getattr(p, "potential")
+            return pot if pot >= p.rating else p.rating + pot
+        return p.rating
+
+    # ---------- Roll 1: 70% — richest top-3 non-user teams buy affordable top-3 ----------
     if random.random() < top_chance:
-        top_three = [t for t in prev_table[:3] if t is not user]
-        if top_three:
-            buyer = random.choice(top_three)
-            top3_players = sorted(user.all_players(), key=lambda p: p.rating, reverse=True)[:3]
-            if top3_players:
-                target = random.choice(top3_players)
-                remove_from_user_and_add_to_buyer(target, buyer, premium_rate)
+        non_user = [t for t in prev_table if t is not user]
+        richest_top3 = sorted(non_user, key=lambda t: t.budget, reverse=True)[:3]
+        if richest_top3:
+            buyer = random.choice(richest_top3)
+            affordable = []
+            for p in user.all_players():
+                _, _, total = est_price_with_premium(p)
+                if total <= buyer.budget:
+                    affordable.append((p, total))
+            if affordable:
+                top3_affordable = sorted(affordable, key=lambda pt: pt[0].rating, reverse=True)[:3]
+                target, total = random.choice(top3_affordable)
+                base, prem, _ = est_price_with_premium(target)
+                remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=False)
 
-    # ----- Roll 2: Bottom-2 teams (not user) poach from user reserves (75-80 OVR) -----
+    # ---------- Roll 2: 20% — bottom-3 in table buy from top-5 potential reserves (can go negative) ----------
     if random.random() < bottom_chance:
-        bottom_two = [t for t in prev_table[-2:] if t is not user]
-        if bottom_two:
-            buyer = random.choice(bottom_two)
-            pool = [p for p in user.reserves if 75 <= p.rating <= 80]
-            if pool:
-                # Limit the candidate set to 5 if more are available, then pick one
-                candidates = random.sample(pool, k=min(5, len(pool)))
-                target = random.choice(candidates)
-                remove_from_user_and_add_to_buyer(target, buyer, premium_rate)
+        bottom3 = [t for t in prev_table[-3:] if t is not user]
+        if bottom3 and user.reserves:
+            buyer = random.choice(bottom3)
+            reserves_by_pot = sorted(user.reserves, key=lambda p: calc_max_potential(p), reverse=True)[:5]
+            if reserves_by_pot:
+                target = random.choice(reserves_by_pot)
+                base, prem, total = est_price_with_premium(target)
+                remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=True)
+
+    # ---------- Roll 3: 40% — free move if >3 reserves rated >81 to lowest-avg team ----------
+    if random.random() < free_roll_chance:
+        strong_reserves = [p for p in user.reserves if p.rating > 81]
+        candidates = [t for t in prev_table if t is not user]
+        if len(strong_reserves) > 3 and candidates:
+            dest = min(candidates, key=lambda t: t.avg_rating())
+            target = random.choice(strong_reserves)
+            free_move_from_user_reserves(target, dest)
+
 
 
 def make_free_agent_pool(num=45):

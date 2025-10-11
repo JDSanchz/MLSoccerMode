@@ -72,7 +72,7 @@ def action_transfer_hub(user, teams, TM_OPEN, TM_CLOSE,
 
 def action_continue(user, teams, champion_poach_user, organize_squad, prev_table=None):
     def _inner():
-        champion_poach_user(prev_table, user, top_chance=0.20, bottom_chance=0, premium_rate=0.25)
+        champion_poach_user(prev_table, user, top_chance=0.40, bottom_chance=0.10, premium_rate=0.20)
         for t in teams:
             organize_squad(t)
         return "back"
