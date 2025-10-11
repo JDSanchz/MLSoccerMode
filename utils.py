@@ -16,12 +16,40 @@ def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
 def manager_switch_option(user, table):
-    bottom3 = table[-3:]
-    print("\nBottom 3 teams (eligible to switch):")
-    for i, t in enumerate(bottom3):
-        print(f"  {i+1}. {t.name}  (Pts {t.points})")
-    if yesno("Do you want to switch to one of them? (y/n): "):
-        k = prompt_int("Pick (1..{}): ".format(len(bottom3)), 1, len(bottom3)) - 1
-        print(f"You now manage {bottom3[k].name}.")
-        return bottom3[k]
+    # Bottom 2 in the final table
+    bottom2 = table[-2:]
+
+    def is_user_team(t):
+        return (t is user) or getattr(t, "is_user", False)
+
+    # Only show teams that are NOT user-managed
+    options = [t for t in bottom2 if not is_user_team(t)]
+
+    print("\n" + "=" * 55)
+    print(" ⚙️  MANAGER SWITCH OPTION ".center(55, " "))
+    print("=" * 55)
+
+    if not options:
+        print("No eligible bottom-2 teams available for switching.")
+        print("You will remain with your current club.")
+        print("=" * 55)
+        return user
+
+    print("📉  Bottom 2 teams this season:")
+    print("-" * 55)
+    for i, t in enumerate(options, 1):
+        print(f"  {i}. {t.name:<20} | Points: {t.points:>3} | GD: {t.gf - t.ga:+d}")
+    print("-" * 55)
+
+    if yesno("Would you like to switch to one of these clubs? (y/n): "):
+        k = prompt_int(f"Pick (1–{len(options)}): ", 1, len(options)) - 1
+        choice = options[k]
+
+        print("\n" + "-" * 55)
+        print(f"🎯  You are now managing: {choice.name}")
+        print("-" * 55)
+        return choice
+
+    print("🔒  You decided to stay with your current team.")
+    print("=" * 55)
     return user

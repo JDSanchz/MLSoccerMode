@@ -84,6 +84,7 @@ def champion_poach_user(prev_table, user, top_chance=0.33, bottom_chance=0.20, p
     if not prev_table or not user.all_players():
         return
 
+    # ----- TODO : MAKE THIS MORE FAIR BUT MORE OFTEN -----
     def remove_from_user_and_add_to_buyer(target, buyer, premium_rate):
         base_price = est_cost_eur(target.age, target.rating)
         premium = max(1, int(round(base_price * premium_rate)))
@@ -148,20 +149,11 @@ def make_free_agent_pool(num=45):
         pot = roll_potential(rating)
         return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
-    # 1) Build initial pool
     pool = [make_player(random.choice(base_positions), 18, 38, 72, 87) for _ in range(num)]
 
-    # 2) Ensure at least 2 GKs (same potential logic)
-    gks = [p for p in pool if p.pos == "GK"]
-    while len(gks) < 2:
-        gk = make_player("GK", 18, 38, 72, 87)
-        pool.append(gk)
-        gks.append(gk)
-
-    # 3) Keep best 35 by value (20 young ≤25, 15 older 26–38)
-    if len(pool) > 35:
-        young = sorted([p for p in pool if p.age <= 25], key=lambda x: x.value(), reverse=True)[:20]
-        old   = sorted([p for p in pool if 26 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:15]
+    if len(pool) > 40:
+        young = sorted([p for p in pool if p.age <= 27], key=lambda x: x.value(), reverse=True)[:30]
+        old   = sorted([p for p in pool if 28 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:10]
         pool = young + old
 
     return pool

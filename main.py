@@ -20,7 +20,7 @@ def apply_retirements(teams):
         keep_starters, keep_bench, keep_res = [], [], []
         for lst, keep in [(t.starters, keep_starters), (t.bench, keep_bench), (t.reserves, keep_res)]:
             for p in lst:
-                must_retire = (p.age >= 39) or p.retiring_notice  # your policy
+                must_retire = (p.age >= 39) or p.retiring_notice 
                 if not must_retire:
                     keep.append(p)
         t.starters, t.bench, t.reserves = keep_starters, keep_bench, keep_res
