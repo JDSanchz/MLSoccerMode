@@ -4,9 +4,9 @@ TEAMS_INIT = [
     {"name": "Barcelona",      "avg": 86, "budget": 100, "objective": 2, "formation": "4-3-3", "stadium": "Spotify Camp Nou"},
     {"name": "Real Madrid",    "avg": 86, "budget": 180, "objective": 2, "formation": "4-4-2", "stadium": "Santiago Bernabéu Stadium"},
     {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 2, "formation": "4-3-3", "stadium": "Allianz Arena"},
-    {"name": "America",        "avg": 80, "budget": 40, "objective": 5, "formation": "4-4-2", "stadium": "El Nido"},
-    {"name": "Ajax",            "avg": 82, "budget": 35, "objective": 4, "formation": "4-3-3", "stadium": "Ajax Arena"},
-    {"name": "AC Milan",        "avg": 83, "budget": 45, "objective": 3, "formation": "4-4-2", "stadium": "San Siro"},
+    {"name": "Man United",     "avg": 82, "budget": 75, "objective": 3, "formation": "4-3-3", "stadium": "Old Trafford"},
+    {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 2, "formation": "4-3-3", "stadium": "Emirates Stadium"},
+    {"name": "AC Milan",        "avg": 83, "budget": 45, "objective": 3, "formation": "3-5-2", "stadium": "San Siro"},
     {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 3, "formation": "4-3-3", "stadium": "Stamford Bridge"},
     {"name": "Porto",            "avg": 82, "budget": 30, "objective": 5, "formation": "4-3-3", "stadium": "Do Dragao"},
 ]
@@ -17,8 +17,8 @@ ORIGINS = {
     "Barcelona": ["Spain","United States","Argentina","Netherlands","Chile"],
     "Real Madrid": ["Spain","England","Brazil","Belgium","Argentina","France"],
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
-    "America": ["Mexico","Brazil","Uruguay","Chile","Colombia"],
-    "Ajax": ["Netherlands","United States","Argentina","Mexico"],
+    "Man United": ["England","Portugal","Uruguay","Netherlands","France"],
+    "Arsenal": ["England","France","Spain","Germany","Netherlands"],
     "AC Milan": ["Italy","France","Germany","Netherlands","United States"],
     "Chelsea": ["England","France","Brazil","Netherlands","Uruguay"],
     "Porto": ["Portugal","France","Brazil","Netherlands","Nigeria"],
@@ -27,6 +27,7 @@ ORIGINS = {
 FORMATIONS = {
     "4-3-3": {"GK":1,"CB":2,"LB":1,"RB":1,"CM":3,"LW":1,"RW":1,"ST":1},
     "4-4-2": {"GK":1,"CB":2,"LB":1,"RB":1,"CDM":1,"CAM":1,"LW":1,"RW":1,"ST":2},
+    "3-5-2": {"GK":1,"CB":3,"CDM":2,"CAM":1,"LW":1,"RW":1,"ST":2},
 }
 
 INIT_YEAR = 2025  # first season start (Aug 15, 2025)

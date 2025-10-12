@@ -25,6 +25,7 @@ def suggest_bench_positions(formation, size):
     pools = {
         "4-3-3": ["GK", "CB", "LB", "RB", "CM", "CM", "LW", "RW", "ST"],
         "4-4-2": ["GK", "CB", "LB", "RB", "CDM", "CAM", "LW", "RW", "ST"],
+        "3-5-2": ["GK", "CB", "CDM", "CAM", "LW", "RW", "ST"],
     }
     base = pools[formation]
     out = []
@@ -119,7 +120,7 @@ class Team:
             return "Spain"  # fallback if needed
         if len(arr) == 1:
             return arr[0]
-        first_w = 0.30
+        first_w = 0.40
         rest_w = (1.0 - first_w) / (len(arr) - 1)
         weights = [first_w] + [rest_w] * (len(arr) - 1)
         return random.choices(arr, weights=weights, k=1)[0]
