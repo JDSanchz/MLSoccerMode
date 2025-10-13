@@ -47,10 +47,10 @@ def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
 
         # === Reward / perk ===
         roll = random.random()
-        if roll < 0.80:
+        if roll < 0.70:
             user.receive(7)
             print(f"\n🎁 Thanks! {user.name} receives €7M.")
-        elif roll < 0.93:
+        elif roll < 0.85:
             user.receive(10)
             print(f"\n🎁 Jackpot! {user.name} receives €10M.")
         else:
@@ -59,7 +59,7 @@ def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
             if squad:
                 low = min(squad, key=lambda p: getattr(p, "potential", p.rating))
                 old_range = low.potential_range
-                low.apply_potential_boost(5)
+                low.apply_potential_boost(7)
                 print(
                     f"\n✨ Development boost! {low.name}'s potential range is now revealed and improved: "
                     f"{old_range} → {low.potential_range}"
