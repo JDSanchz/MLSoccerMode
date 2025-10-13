@@ -111,8 +111,6 @@ class Team:
             )
             cursor += 1
 
-        # Do not touch reserves
-
     # In class Team
     def pick_weighted_origin(self):
         arr = self.origins

@@ -23,5 +23,5 @@ def process_rewards_penalties(table):
     if len(eligible) >= 2:
         lucky_two = random.sample(eligible, 2)
         for lucky in lucky_two:
-            lucky.receive(40)
-            print(f"\nLucky Club: {lucky.name} receives €40M")
+            lucky.receive(25)
+            print(f"\nLucky Club: {lucky.name} receives €25M")

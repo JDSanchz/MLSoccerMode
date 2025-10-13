@@ -50,4 +50,11 @@ class Player:
             self.display_potential_range = True
 
         self.age += 1
+        self.potential_range = self._assign_potential_range()
 
+    def apply_potential_boost(self, delta):
+        old_pot = self.potential
+        self.potential = clamp(self.potential + delta, 70, 95)
+        self.potential_range = self._assign_potential_range()
+        self.display_potential_range = True 
+        return old_pot, self.potential

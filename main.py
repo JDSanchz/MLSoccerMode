@@ -11,6 +11,7 @@ from injuries import recover_injuries, assign_season_injuries
 from preseason import preseason_loop
 from transfersAI import *
 from transfersPlayer import *
+from survey import *
 
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
@@ -98,7 +99,12 @@ def main():
         prev_table = table[:]
         year += 1
 
-        if not yesno("\nRun another season? (y/n): "):
+        cont = yesno("\nRun another season? (y/n): ")
+
+        # ✳️ Ask for 3 price labels after every season, even if user decides to stop
+        collect_price_labels(user, n=3, csv_path="price_labels.csv", year=year)
+
+        if not cont:
             print("Thanks for playing!")
             break
 
