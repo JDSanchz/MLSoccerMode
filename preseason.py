@@ -5,7 +5,6 @@ from utils import yesno
 
 def end_contracts_flow(team):
     while True:
-        print("\n=== See Squad / End Contracts ===")
         show_player_list("Starters", team.starters)
         show_player_list("Bench", team.bench)
         show_player_list("Reserves", team.reserves)
