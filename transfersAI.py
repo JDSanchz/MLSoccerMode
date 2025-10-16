@@ -3,6 +3,7 @@ from playerCost import est_cost_eur
 from constants import *
 from randomName import random_name
 from models.player import Player
+from organizeSquad import organize_squad
 
 def trim_ai_reserves(team):
     over = len(team.reserves) - RESERVES
@@ -40,9 +41,18 @@ def ai_transfers(team, free_agents):
         print(f"{team.name} skips transfers (budget €{team.budget:,}M < €5M).")
         return
 
+    organize_squad(team)
+
     n_transfers = random.randint(1, 3)
-    weak3 = team.weakest_positions()
-    pick_positions = random.sample(weak3, k=min(2, len(weak3)))
+
+    def sample_need_positions(exclude=None):
+        weak = team.weakest_positions()
+        if exclude:
+            filtered = [pos for pos in weak if pos != exclude]
+            weak = filtered if filtered else weak  # fall back if exclusion empties list
+        return random.sample(weak, k=min(2, len(weak))) if weak else []
+
+    pick_positions = sample_need_positions()
 
     # If planned multi-signing leaves < €30M per signing, do just one
     if n_transfers > 1 and (team.budget // n_transfers) < 30:
@@ -51,6 +61,8 @@ def ai_transfers(team, free_agents):
         if pick_positions:
             pick_positions = [pick_positions[0]]
 
+    last_position = None
+
     for i in range(n_transfers):
         # If budget dropped under €5M during the window, stop signing more
         if team.budget < 5:
@@ -58,6 +70,22 @@ def ai_transfers(team, free_agents):
             break
         if not free_agents:
             break
+
+        pick_positions = sample_need_positions(exclude=last_position)
+
+        roster = team.all_players()
+        total_rating = sum(p.rating for p in roster)
+        roster_size = len(roster)
+        current_avg = (total_rating / roster_size) if roster_size else 0
+
+        def acceptable(player):
+            if not roster_size:
+                return True
+            new_avg = (total_rating + player.rating) / (roster_size + 1)
+            if new_avg >= current_avg:
+                return True
+            projected = getattr(player, "potential", player.rating)
+            return projected >= 87 and player.age < 25
 
         # Spend roughly a fraction of remaining budget for this signing
         remaining = n_transfers - i
@@ -72,8 +100,12 @@ def ai_transfers(team, free_agents):
         if not candidates:
             continue
 
+        viable = [p for p in candidates if acceptable(p)]
+        if not viable:
+            continue
+
         # Prefer top-rated affordable targets; add a little randomness
-        target_pool = sorted(candidates, key=lambda x: x.rating, reverse=True)[:6]
+        target_pool = sorted(viable, key=lambda x: x.rating, reverse=True)[:6]
         signing = random.choice(target_pool)
         price = est_cost_eur(signing.age, signing.rating)
 
@@ -82,6 +114,8 @@ def ai_transfers(team, free_agents):
             team.reserves.append(signing)
             print(f"📝 {team.name} signed {signing.name} ({signing.pos}, {signing.rating} OVR, Age {signing.age}) "
           f"for €{price:,}M.")
+            organize_squad(team)
+            last_position = signing.pos
 
 
 def champion_poach_user(

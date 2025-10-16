@@ -1,4 +1,5 @@
 import random
+import time
 from constants import *
 from retirement import season_end_retirements
 from matchEngineSchedules import *
@@ -30,7 +31,7 @@ def apply_retirements(teams):
 # MAIN FLOW (CONTINUOUS SEASONS)
 # =========================
 def main():
-    random.seed(42)
+    random.seed(time.time_ns())
     teams = [Team(m) for m in TEAMS_INIT]
     for t in teams:
         t.generate_initial_squad()
