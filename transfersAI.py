@@ -44,12 +44,18 @@ def ai_transfers(team, free_agents):
     weak3 = team.weakest_positions()
     pick_positions = random.sample(weak3, k=min(2, len(weak3)))
 
+    # If planned multi-signing leaves < €30M per signing, do just one
+    if n_transfers > 1 and (team.budget // n_transfers) < 30:
+        n_transfers = 1
+        # Focus positions: keep existing picks (or pick one strongest need)
+        if pick_positions:
+            pick_positions = [pick_positions[0]]
+
     for i in range(n_transfers):
         # If budget dropped under €5M during the window, stop signing more
         if team.budget < 5:
             print(f"{team.name} stops transfers (budget €{team.budget:,}M < €5M).")
             break
-
         if not free_agents:
             break
 
@@ -66,13 +72,17 @@ def ai_transfers(team, free_agents):
         if not candidates:
             continue
 
-        target = sorted(candidates, key=lambda x: x.rating, reverse=True)[:6]
-        signing = random.choice(target)
+        # Prefer top-rated affordable targets; add a little randomness
+        target_pool = sorted(candidates, key=lambda x: x.rating, reverse=True)[:6]
+        signing = random.choice(target_pool)
         price = est_cost_eur(signing.age, signing.rating)
 
         if team.pay(price):
             free_agents.remove(signing)
             team.reserves.append(signing)
+            print(f"📝 {team.name} signed {signing.name} ({signing.pos}, {signing.rating} OVR, Age {signing.age}) "
+          f"for €{price:,}M.")
+
 
 def champion_poach_user(
     prev_table,
@@ -80,7 +90,7 @@ def champion_poach_user(
     top_chance=0.50,
     bottom_chance=0.20,
     premium_rate=0.15,
-    free_roll_chance=0.50
+    free_roll_chance=0.60
 ):
     if not prev_table or not user.all_players():
         return
@@ -173,7 +183,7 @@ def champion_poach_user(
                 base, prem, total = est_price_with_premium(target)
                 remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=True)
 
-    # ---------- Roll 3: 40% — free move if >3 reserves rated >81 to lowest-avg team ----------
+    # ---------- Roll 3: 60% — free move if >3 reserves rated >81 to lowest-avg team ----------
     if random.random() < free_roll_chance:
         strong_reserves = [p for p in user.reserves if p.rating > 81]
         candidates = [t for t in prev_table if t is not user]
