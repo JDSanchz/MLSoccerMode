@@ -77,10 +77,10 @@ def ai_transfers(team, free_agents):
 def champion_poach_user(
     prev_table,
     user,
-    top_chance=0.70,
+    top_chance=0.50,
     bottom_chance=0.20,
     premium_rate=0.15,
-    free_roll_chance=0.40
+    free_roll_chance=0.50
 ):
     if not prev_table or not user.all_players():
         return
@@ -192,7 +192,7 @@ def make_free_agent_pool(num=45):
         return random.choice(all_origins)
 
     def roll_potential(rating):
-        pot = random.randint(79, 95)
+        pot = random.randint(79, 94)
         return max(rating + 1, pot) if pot <= rating else pot
 
     def make_player(pos, age_lo, age_hi, rating_lo, rating_hi):
@@ -202,7 +202,7 @@ def make_free_agent_pool(num=45):
         pot = roll_potential(rating)
         return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
-    pool = [make_player(random.choice(base_positions), 18, 38, 72, 87) for _ in range(num)]
+    pool = [make_player(random.choice(base_positions), 18, 38, 74, 88) for _ in range(num)]
 
     if len(pool) > 40:
         young = sorted([p for p in pool if p.age <= 27], key=lambda x: x.value(), reverse=True)[:30]

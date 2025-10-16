@@ -44,24 +44,23 @@ def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
                 model_val_M,
                 user_price
             ])
-
         # === Reward / perk ===
         roll = random.random()
-        if roll < 0.70:
-            user.receive(7)
-            print(f"\n🎁 Thanks! {user.name} receives €7M.")
-        elif roll < 0.85:
-            user.receive(10)
-            print(f"\n🎁 Jackpot! {user.name} receives €10M.")
-        else:
-            # +5 to lowest-potential player (capped 95) and reveal range
+        if roll < 0.50:
+            user.receive(5)
+            print(f"\n🎁 Thanks! {user.name} receives €5M.")
+        elif roll < 0.90:
+            # 40% boost chance
             squad = list(user.all_players())
             if squad:
                 low = min(squad, key=lambda p: getattr(p, "potential", p.rating))
                 old_range = low.potential_range
-                low.apply_potential_boost(7)
+                low.apply_potential_boost(5)
                 print(
                     f"\n✨ Development boost! {low.name}'s potential range is now revealed and improved: "
                     f"{old_range} → {low.potential_range}"
                 )
+        else:
+            user.receive(10)
+            print(f"\n💰 Jackpot! {user.name} receives €10M.")
 

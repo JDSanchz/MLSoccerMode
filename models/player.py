@@ -21,14 +21,17 @@ class Player:
         """Assign a potential range bucket based on the player's potential."""
         if self.potential <= 72:
             return "60–72"
-        elif self.potential <= 79:
-            return "73–79"
-        elif self.potential <= 84:
-            return "80–84"
-        elif self.potential <= 90:
-            return "85–90"
+        elif self.potential <= 77:
+            return "73–77"
+        elif self.potential <= 82:
+            return "78–82"
+        elif self.potential <= 88:
+            return "83–88"
+        elif self.potential <= 92:
+            return "89–92"
         else:
-            return "90–95"
+            return "93–95"
+
 
     def is_available_on(self, when):
         return self.injured_until is None or when > self.injured_until
@@ -36,10 +39,10 @@ class Player:
     def season_progression(self):
         # Growth till 34: +1..+4 for youth, +1..+3 for others; decline after
         if self.age < 20:
-            grow = random.randint(1, 4)
+            grow = random.randint(1, 5)
             self.rating = min(self.potential, self.rating + grow)
         elif self.age < 34:
-            grow = random.randint(1, 3)
+            grow = random.randint(0, 4)
             self.rating = min(self.potential, self.rating + grow)
         else:
             drop = random.randint(0, 4)
