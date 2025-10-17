@@ -1,1 +1,3 @@
 price_labels.csv
+__pycache__/
+*.pyc

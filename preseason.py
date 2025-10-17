@@ -2,6 +2,16 @@ import random
 from prompts import prompt_int
 from ui import print_subtitle, run_menu, show_player_list
 from utils import yesno
+from constants import FORMATIONS
+
+
+def _fmt_currency(amount):
+    if amount >= 1_000_000:
+        amount_m = amount / 1_000_000
+        if amount_m.is_integer():
+            return f"€{int(amount_m):,}M"
+        return f"€{amount_m:,.1f}M"
+    return f"€{amount:,}M"
 
 def end_contracts_flow(team):
     while True:
@@ -12,31 +22,37 @@ def end_contracts_flow(team):
         if not yesno("\nRelease someone? (y/n): "):
             break
 
-        print("\nPick a list to release from:")
+        print("\nChoose a group to release from:")
         print("  1) Starters")
         print("  2) Bench")
         print("  3) Reserves")
-        lst_choice = prompt_int("List (1-3): ", 1, 3)
+        lst_choice = prompt_int("Group (1-3): ", 1, 3)
 
-        pool = team.starters if lst_choice == 1 else team.bench if lst_choice == 2 else team.reserves
+        pools = {1: ("Starters", team.starters), 2: ("Bench", team.bench), 3: ("Reserves", team.reserves)}
+        pool_name, pool = pools[lst_choice]
         if not pool:
-            print("That list is empty.")
+            print(f"{pool_name} currently has no players.")
             continue
 
-        show_player_list("Selected list", pool)
-        idx = prompt_int(f"Release which (1..{len(pool)}): ", 1, len(pool)) - 1
+        show_player_list(f"{pool_name} (selected)", pool)
+        idx = prompt_int(f"Release which player (1..{len(pool)}): ", 1, len(pool)) - 1
         victim = pool[idx]
-        fee = max(1, int(round(victim.value() * 0.12)))
+        value = victim.value()
+        fee = min(10, max(1, int(round(value * 0.12))))
+        capped = fee == 10
 
-        print(f"Releasing {victim.name} will cost €{fee:,}. Current budget €{team.budget:,}.")
-        if yesno("Proceed? (y/n): "):
+        print(f"\n{victim.name} — estimated value {_fmt_currency(value)}.")
+        clause_note = " (cap reached)" if capped else ""
+        print(f"Release payout (12% capped at €10M): {_fmt_currency(fee)}{clause_note}.")
+        print(f"Club budget before release: {_fmt_currency(team.budget)}.")
+        if yesno("Confirm release? (y/n): "):
             if team.pay(fee):
                 pool.pop(idx)
-                print(f"Released {victim.name}. New budget €{team.budget:,}.")
+                print(f"Released {victim.name}. New budget {_fmt_currency(team.budget)}.")
                 # caller can reorganize after returning, or import locally:
                 # from organizeSquad import organize_squad; organize_squad(team)
             else:
-                print("Insufficient funds to pay release fee.")
+                print("Not enough funds to cover the release payout.")
 
 def action_view_squad(user, organize_squad):
     def _inner():
@@ -46,14 +62,35 @@ def action_view_squad(user, organize_squad):
         return "again"
     return _inner
 
+def action_change_formation(user, organize_squad):
+    def _inner():
+        print_subtitle("Change Team Formation")
+        formations = list(FORMATIONS.keys())
+        print(f"Current formation: {user.formation}")
+        for i, formation in enumerate(formations, 1):
+            marker = " (current)" if formation == user.formation else ""
+            print(f"  {i}) {formation}{marker}")
+        choice = prompt_int(f"Pick a formation (1-{len(formations)}): ", 1, len(formations)) - 1
+        selected = formations[choice]
+        if selected == user.formation:
+            print(f"{user.name} already lines up in a {selected}. No changes made.")
+        else:
+            user.formation = selected
+            organize_squad(user)
+            print(f"{user.name} will now play a {selected}. Squad reorganized to match the new shape.")
+        return "again"
+    return _inner
+
 def action_transfer_hub(user, teams, TM_OPEN, TM_CLOSE,
-                        make_free_agent_pool, champion_poach_user,
+                        make_free_agent_pool, champion_poach_user, user_poach_players,
                         ai_transfers, user_transfers, organize_squad, trim_ai_reserves,
                         prev_table=None):
     def _inner():
         print_subtitle(f"Transfer Window: {TM_OPEN.isoformat()} → {TM_CLOSE.isoformat()}")
         fa = make_free_agent_pool(30)
-        champion_poach_user(prev_table, user)
+        poach_premium_rate = 0.15
+        champion_poach_user(prev_table, user, premium_rate=poach_premium_rate)
+        user_poach_players(user, teams, premium_rate=poach_premium_rate)
         order = teams[:]
         random.shuffle(order)
 
@@ -78,14 +115,15 @@ def action_continue(user, teams, champion_poach_user, organize_squad, prev_table
     return _inner
 
 def preseason_loop(user, teams, TM_OPEN, TM_CLOSE,
-                   make_free_agent_pool, champion_poach_user,
+                   make_free_agent_pool, champion_poach_user, user_poach_players,
                    ai_transfers, user_transfers, organize_squad, trim_ai_reserves,
                    prev_table=None):
     options = [
         ("See Squad / End Contracts", action_view_squad(user, organize_squad)),
+        ("Change Team Formation", action_change_formation(user, organize_squad)),
         ("Transfer Hub", action_transfer_hub(
             user, teams, TM_OPEN, TM_CLOSE,
-            make_free_agent_pool, champion_poach_user,
+            make_free_agent_pool, champion_poach_user, user_poach_players,
             ai_transfers, user_transfers, organize_squad, trim_ai_reserves,
             prev_table
         )),

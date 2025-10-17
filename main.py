@@ -55,7 +55,7 @@ def main():
             t.top_up_youth(is_user=(t is user))
 
         preseason_loop(user, teams, TM_OPEN, TM_CLOSE,
-                       make_free_agent_pool, champion_poach_user,
+                       make_free_agent_pool, champion_poach_user, user_poach_players,
                        ai_transfers, user_transfers, organize_squad, trim_ai_reserves,
                        prev_table)
 

@@ -13,7 +13,7 @@ SIMILAR_POS = {
     "LW":  ["LB", "CAM"],
 }
 
-SIMILAR_DIFF = 4 
+SIMILAR_DIFF = 5
 
 def organize_squad(team, on=None):
     """
