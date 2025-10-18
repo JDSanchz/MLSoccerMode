@@ -103,7 +103,7 @@ def main():
         cont = yesno("\nRun another season? (y/n): ")
 
         # ✳️ Ask for 3 price labels after every season, even if user decides to stop
-        collect_price_labels(user, n=3, csv_path="price_labels.csv", year=year)
+        collect_price_labels(user, n=2, csv_path="price_labels.csv", year=year)
 
         if not cont:
             print("Thanks for playing!")
