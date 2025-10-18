@@ -121,10 +121,10 @@ def ai_transfers(team, free_agents):
 def champion_poach_user(
     prev_table,
     user,
-    top_chance=0.50,
-    bottom_chance=0.20,
+    top_chance=0.60,
+    bottom_chance=0.30,
     premium_rate=0.15,
-    free_roll_chance=0.60
+    free_roll_chance=0.80
 ):
     if not prev_table or not user.all_players():
         return

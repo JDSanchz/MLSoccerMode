@@ -29,10 +29,9 @@ def user_poach_players(user, teams, premium_rate=0.15):
     def opponent_teams():
         return [t for t in teams if t is not user and t.all_players()]
 
-    def gather_affordable_targets():
-        affordable = []
+    def gather_affordable_by_position():
+        pos_map = {}
         for club in opponent_teams():
-            entries = []
             buckets = [
                 ("Starters", club.starters),
                 ("Bench", club.bench),
@@ -44,10 +43,10 @@ def user_poach_players(user, teams, premium_rate=0.15):
                     premium = max(1, int(round(base * premium_rate)))
                     total = base + premium
                     if total <= user.budget:
-                        entries.append((bucket_name, bucket, player, base, premium, total))
-            if entries:
-                affordable.append((club, entries))
-        return affordable
+                        pos_map.setdefault(player.pos, []).append(
+                            (club, bucket_name, bucket, player, base, premium, total)
+                        )
+        return pos_map
 
     if not opponent_teams():
         print("\nNo opponent clubs currently have players available to poach.")
@@ -61,36 +60,38 @@ def user_poach_players(user, teams, premium_rate=0.15):
         if not yesno("\nAttempt to poach a player from another club? (y/n): "):
             break
 
-        affordable_targets = gather_affordable_targets()
-        if not affordable_targets:
-            print("\nNo clubs have players you can currently afford to poach right now.")
+        affordable_by_pos = gather_affordable_by_position()
+        if not affordable_by_pos:
+            print("\nNo players match your budget across any positions right now.")
             break
 
-        print(f"\nClubs with affordable poach targets (your budget €{user.budget:,}):")
-        for idx, (club, entries) in enumerate(affordable_targets, 1):
-            print(
-                f"  {idx:>2}. {club.name:<20} Avg {club.avg_rating():>4.1f}  "
-                f"Budget €{club.budget:,}  Affordable players: {len(entries)}"
-            )
+        positions = sorted(affordable_by_pos.keys())
+        print(f"\nAvailable positions to poach (budget €{user.budget:,}):")
+        for idx, pos in enumerate(positions, 1):
+            print(f"  {idx:>2}. {pos:<3}  Affordable players: {len(affordable_by_pos[pos])}")
 
-        club_idx = prompt_int(f"Pick a club (1..{len(affordable_targets)}): ", 1, len(affordable_targets)) - 1
-        target, roster_entries = affordable_targets[club_idx]
+        pos_idx = prompt_int(f"Pick a position (1..{len(positions)}): ", 1, len(positions)) - 1
+        selected_pos = positions[pos_idx]
+        roster_entries = sorted(
+            affordable_by_pos[selected_pos],
+            key=lambda entry: (-entry[3].rating, entry[6])
+        )
 
         print("\nBudget filter active: listing only players you can afford right now.")
         print(
-            f"\nAffordable players from {target.name} "
+            f"\nAffordable {selected_pos} targets "
             f"(cost includes {int(premium_rate * 100)}% poach premium):"
         )
-        for idx, (bucket_name, _, player, base, premium, total) in enumerate(roster_entries, 1):
+        for idx, (club, bucket_name, _, player, base, premium, total) in enumerate(roster_entries, 1):
             flag = player.flag() if hasattr(player, "flag") else f"({player.nation})"
             print(
-                f"  {idx:>2}. {bucket_name:<8} {player.pos:<3} "
-                f"{player.rating:>2} OVR  {player.age:>2}y  {player.name:<28} {flag}  "
+                f"  {idx:>2}. {player.name:<28} {flag}  {player.rating:>2} OVR  {player.age:>2}y  "
+                f"{club.name:<18} {bucket_name:<8}  "
                 f"€{total:,} (Base €{base:,} + Premium €{premium:,})"
             )
 
         pick_idx = prompt_int(f"Poach which player (1..{len(roster_entries)}): ", 1, len(roster_entries)) - 1
-        bucket_name, bucket, player, base, premium, total = roster_entries[pick_idx]
+        club, bucket_name, bucket, player, base, premium, total = roster_entries[pick_idx]
 
         if total > user.budget:
             print(
@@ -110,26 +111,26 @@ def user_poach_players(user, teams, premium_rate=0.15):
             print("Transaction failed due to insufficient funds.")
             continue
 
-        target.receive(total)
+        club.receive(total)
         if player in bucket:
             bucket.remove(player)
         else:
-            for group in (target.starters, target.bench, target.reserves):
+            for group in (club.starters, club.bench, club.reserves):
                 if player in group:
                     group.remove(player)
                     break
 
         user.reserves.append(player)
         organize_squad(user)
-        organize_squad(target)
+        organize_squad(club)
         trim_user_reserves(user)
 
         flag = player.flag() if hasattr(player, "flag") else f"({player.nation})"
         print(
-            f"\nPOACH COMPLETE: {user.name} signed {player.name} {flag} from {target.name} "
+            f"\nPOACH COMPLETE: {user.name} signed {player.name} {flag} from {club.name} "
             f"for €{total:,}."
         )
-        print(f"{user.name} budget: €{user.budget:,}. {target.name} budget: €{target.budget:,}.")
+        print(f"{user.name} budget: €{user.budget:,}. {club.name} budget: €{club.budget:,}.")
 
         if not yesno("Poach another player? (y/n): "):
             break

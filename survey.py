@@ -6,7 +6,7 @@ from prompts import prompt_int
 from playerCost import est_cost_eur
 
 # === Add this helper (million-euro labeler + reward logic) ===
-def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
+def collect_price_labels(user, n=2, csv_path="price_labels.csv", year=None):
     """
     Ask the user to label realistic prices for n random players.
     Stores rows: timestamp, team, year, rating, age, model_value, user_price.
@@ -23,8 +23,8 @@ def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
               "Consider real-world + FIFA/FC valuations.\n")
 
         for i in range(1, n + 1):
-            rating = random.randint(64, 95)
-            age = random.randint(16, 39)
+            rating = random.randint(69, 95)
+            age = random.randint(16, 34)
 
             # Current model estimate (in millions) using your model function
             model_val_M = est_cost_eur(age, rating)  # assumed to return "millions" like your budgets
@@ -55,12 +55,12 @@ def collect_price_labels(user, n=3, csv_path="price_labels.csv", year=None):
             if squad:
                 low = min(squad, key=lambda p: getattr(p, "potential", p.rating))
                 old_range = low.potential_range
-                low.apply_potential_boost(5)
+                low.apply_potential_boost(8)
                 print(
                     f"\n✨ Development boost! {low.name}'s potential range is now revealed and improved: "
                     f"{old_range} → {low.potential_range}"
                 )
         else:
-            user.receive(10)
+            user.receive(15)
             print(f"\n💰 Jackpot! {user.name} receives €10M.")
 

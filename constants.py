@@ -9,6 +9,7 @@ TEAMS_INIT = [
     {"name": "AC Milan",        "avg": 83, "budget": 45, "objective": 3, "formation": "3-5-2", "stadium": "San Siro"},
     {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 3, "formation": "4-3-3", "stadium": "Stamford Bridge"},
     {"name": "Porto",            "avg": 82, "budget": 30, "objective": 5, "formation": "4-3-3", "stadium": "Do Dragao"},
+    {"name": "Strasbourg",       "avg": 80, "budget": 40, "objective": 5, "formation": "4-4-2", "stadium": "Stade de la Meinau"},
 ]
 
 ORIGINS = {
@@ -22,6 +23,7 @@ ORIGINS = {
     "AC Milan": ["Italy","France","Germany","Netherlands","United States"],
     "Chelsea": ["England","France","Brazil","Netherlands","Uruguay"],
     "Porto": ["Portugal","France","Brazil","Netherlands","Nigeria"],
+    "Strasbourg": ["France","Nigeria","Argentina","Portugal", "Belgium"]
 }
 
 FORMATIONS = {
