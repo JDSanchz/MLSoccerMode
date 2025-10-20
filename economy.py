@@ -4,11 +4,11 @@ def next_season_base_budget(t):
 
 def process_rewards_penalties(table):
     if len(table) >= 1:
-        table[0].receive(50)
+        table[0].receive(70)
     if len(table) >= 2:
         table[1].receive(40)
     if len(table) >= 3:
-        table[2].receive(20)
+        table[2].receive(35)
 
     for pos, t in enumerate(table, start=1):
         if pos <= t.objective:
@@ -19,12 +19,12 @@ def process_rewards_penalties(table):
             t.budget = int(t.budget * 0.85)
 
     # Two random clubs from positions 3–10 get €25M each
-    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 10]
+    eligible = [t for i, t in enumerate(table, start=1) if 3 <= i <= 11]
     if len(eligible) >= 2:
-        lucky_two = random.sample(eligible, 2)
-        for lucky in lucky_two:
-            lucky.receive(25)
-            print(f"\nLucky Club: {lucky.name} receives €25M")
+        lucky_three = random.sample(eligible, 3)
+        for lucky in lucky_three:
+            lucky.receive(30)
+            print(f"\nLucky Club: {lucky.name} receives €30M")
 
     dynasty_candidates = []
     for pos, t in enumerate(table, start=1):
@@ -38,11 +38,8 @@ def process_rewards_penalties(table):
             dynasty_candidates.append(t)
 
     if dynasty_candidates:
-        parity_pool = [
-            team for i, team in enumerate(table, start=1)
-            if i >= 2 and getattr(team, "top3_streak", 0) < 3
-        ]
-        if parity_pool:
-            beneficiary = random.choice(parity_pool)
-            beneficiary.receive(150)
-            print(f"\nParity Boost: {beneficiary.name} receives €150M")
+        lowest_rated = sorted(table, key=lambda team: team.avg_rating())[:5]
+        if lowest_rated:
+            beneficiary = random.choice(lowest_rated)
+            beneficiary.receive(120)
+            print(f"\nInternational Investment: {beneficiary.name} receives €120M")

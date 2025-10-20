@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
-model = joblib.load("random_forest_model.pkl")
-FEATURES = ["Age", "Rating"]
+model = joblib.load("model02.pkl")
+FEATURES = ["age", "rating"]
 
 
 def est_cost_eur(age, rating):

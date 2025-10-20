@@ -118,7 +118,6 @@ def main():
         year += 1
 
         cont = yesno("\nRun another season? (y/n): ")
-        collect_price_labels(user, n=2, csv_path="price_labels.csv", year=year)
 
         if not cont:
             print("Thanks for playing!")
