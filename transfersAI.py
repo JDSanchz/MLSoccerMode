@@ -129,6 +129,10 @@ def champion_poach_user(
     if not prev_table or not user.all_players():
         return
 
+    if hasattr(user, "cleanup_poach_protected"):
+        user.cleanup_poach_protected()
+    protected = set(getattr(user, "poach_protected", []))
+
     def est_price_with_premium(player):
         base = est_cost_eur(player.age, player.rating)
         prem = max(1, int(round(base * premium_rate)))
@@ -148,6 +152,9 @@ def champion_poach_user(
                 break
 
         buyer.reserves.append(target)
+        if hasattr(user, "unprotect_player"):
+            user.unprotect_player(target)
+        protected.discard(target)
 
         flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
         neg_note = " (budget now negative)" if buyer.budget < 0 else ""
@@ -169,6 +176,9 @@ def champion_poach_user(
                     group.remove(target)
                     break
         dest_team.reserves.append(target)
+        if hasattr(user, "unprotect_player"):
+            user.unprotect_player(target)
+        protected.discard(target)
         flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
         print(
             f"\nFREE TRANSFER: {target.name} {flag} left {user.name} "
@@ -197,6 +207,8 @@ def champion_poach_user(
             buyer = random.choice(richest_top3)
             affordable = []
             for p in user.all_players():
+                if p in protected:
+                    continue
                 _, _, total = est_price_with_premium(p)
                 if total <= buyer.budget:
                     affordable.append((p, total))
@@ -211,7 +223,10 @@ def champion_poach_user(
         bottom3 = [t for t in prev_table[-3:] if t is not user]
         if bottom3 and user.reserves:
             buyer = random.choice(bottom3)
-            reserves_by_pot = sorted(user.reserves, key=lambda p: calc_max_potential(p), reverse=True)[:5]
+            reserves_by_pot = [
+                p for p in user.reserves if p not in protected
+            ]
+            reserves_by_pot = sorted(reserves_by_pot, key=lambda p: calc_max_potential(p), reverse=True)[:5]
             if reserves_by_pot:
                 target = random.choice(reserves_by_pot)
                 base, prem, total = est_price_with_premium(target)
@@ -219,7 +234,7 @@ def champion_poach_user(
 
     # ---------- Roll 3: 60% — free move if >3 reserves rated >81 to lowest-avg team ----------
     if random.random() < free_roll_chance:
-        strong_reserves = [p for p in user.reserves if p.rating > 81]
+        strong_reserves = [p for p in user.reserves if p.rating > 81 and p not in protected]
         candidates = [t for t in prev_table if t is not user]
         if len(strong_reserves) > 3 and candidates:
             dest = min(candidates, key=lambda t: t.avg_rating())

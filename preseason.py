@@ -48,6 +48,8 @@ def end_contracts_flow(team):
         if yesno("Confirm release? (y/n): "):
             if team.pay(fee):
                 pool.pop(idx)
+                if hasattr(team, "unprotect_player"):
+                    team.unprotect_player(victim)
                 print(f"Released {victim.name}. New budget {_fmt_currency(team.budget)}.")
                 # caller can reorganize after returning, or import locally:
                 # from organizeSquad import organize_squad; organize_squad(team)
@@ -78,6 +80,68 @@ def action_change_formation(user, organize_squad):
             user.formation = selected
             organize_squad(user)
             print(f"{user.name} will now play a {selected}. Squad reorganized to match the new shape.")
+        return "again"
+    return _inner
+
+def action_manage_no_poach(user, organize_squad):
+    def _inner():
+        print_subtitle("Protected From Poaching")
+        organize_squad(user)
+        if hasattr(user, "cleanup_poach_protected"):
+            user.cleanup_poach_protected()
+
+        while True:
+            roster = []
+            for group_name, group in [("Starters", user.starters), ("Bench", user.bench), ("Reserves", user.reserves)]:
+                for player in group:
+                    roster.append((group_name, player))
+
+            if not roster:
+                print("\nYou currently have no players to protect.")
+                break
+
+            protected = getattr(user, "poach_protected", [])
+            print(f"\nProtection slots used: {len(protected)}/3")
+            if protected:
+                print("Currently protected:")
+                for p in protected:
+                    flag = p.flag() if hasattr(p, "flag") else f"({p.nation})"
+                    print(f"  - {p.name} {flag} {p.pos} {p.rating} OVR")
+            else:
+                print("No players are protected right now.")
+
+            print("\nToggle protection for a player (0 to finish):")
+            for idx, (group_name, player) in enumerate(roster, 1):
+                flag = player.flag() if hasattr(player, "flag") else f"({player.nation})"
+                marker = "*" if player in protected else " "
+                print(
+                    f"  {idx:>2}. [{marker}] {group_name:<8} {player.pos:<3} "
+                    f"{player.name:<25} {flag}  {player.rating:>2} OVR  {player.age:>2}y"
+                )
+
+            choice = prompt_int(f"Select (0..{len(roster)}): ", 0, len(roster))
+            if choice == 0:
+                break
+
+            _, picked = roster[choice - 1]
+            protected = getattr(user, "poach_protected", [])
+            if picked in protected:
+                if hasattr(user, "unprotect_player"):
+                    user.unprotect_player(picked)
+                print(f"Removed protection from {picked.name}.")
+            else:
+                if len(protected) >= 3:
+                    print("You already protect 3 players. Remove someone before adding another.")
+                else:
+                    if hasattr(user, "protect_player"):
+                        user.protect_player(picked)
+                    print(f"{picked.name} is now protected from poaching.")
+        protected = getattr(user, "poach_protected", [])
+        if protected:
+            names = ", ".join(p.name for p in protected)
+            print(f"\nFinal protected list: {names}.")
+        else:
+            print("\nNo players are currently protected.")
         return "again"
     return _inner
 
@@ -120,6 +184,7 @@ def preseason_loop(user, teams, TM_OPEN, TM_CLOSE,
                    prev_table=None):
     options = [
         ("See Squad / End Contracts", action_view_squad(user, organize_squad)),
+        ("Set No-Poach Clauses", action_manage_no_poach(user, organize_squad)),
         ("Change Team Formation", action_change_formation(user, organize_squad)),
         ("Transfer Hub", action_transfer_hub(
             user, teams, TM_OPEN, TM_CLOSE,

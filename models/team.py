@@ -51,6 +51,8 @@ class Team:
         self.points = 0
         self.gf = 0
         self.ga = 0
+        self.top3_streak = 0
+        self.poach_protected = []
 
     def reset_season_stats(self):
         self.points = 0
@@ -58,6 +60,7 @@ class Team:
         self.ga = 0
         for p in self.all_players():
             p.injured_until = None
+        self.cleanup_poach_protected()
 
     def all_players(self):
         return self.starters + self.bench + self.reserves
@@ -68,6 +71,25 @@ class Team:
     def avg_rating(self):
         roster = self.first_team()
         return round(mean(p.rating for p in roster), 1) if roster else self.avg_target
+
+    def cleanup_poach_protected(self):
+        roster = set(self.all_players())
+        self.poach_protected = [p for p in self.poach_protected if p in roster]
+
+    def protect_player(self, player):
+        self.cleanup_poach_protected()
+        if player in self.poach_protected:
+            return True
+        if len(self.poach_protected) >= 3:
+            return False
+        if player not in self.all_players():
+            return False
+        self.poach_protected.append(player)
+        return True
+
+    def unprotect_player(self, player):
+        if player in self.poach_protected:
+            self.poach_protected.remove(player)
 
     def generate_initial_squad(self):
         # Build XI positions from formation
@@ -162,4 +184,3 @@ class Team:
 
     def receive(self, amount):
         self.budget += amount
-

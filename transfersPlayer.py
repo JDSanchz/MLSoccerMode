@@ -22,6 +22,8 @@ def trim_user_reserves(team, severance_rate=0.0):
             team.budget -= fee
             print(f"Paid severance €{fee:,}. New budget €{team.budget:,}")
         team.reserves.remove(victim)
+        if hasattr(team, "unprotect_player"):
+            team.unprotect_player(victim)
         print(f"Released {victim.name}. Reserves now {len(team.reserves)}/{RESERVES}.")
 
 def user_poach_players(user, teams, premium_rate=0.15):

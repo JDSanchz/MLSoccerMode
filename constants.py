@@ -4,12 +4,12 @@ TEAMS_INIT = [
     {"name": "Barcelona",      "avg": 86, "budget": 100, "objective": 2, "formation": "4-3-3", "stadium": "Spotify Camp Nou"},
     {"name": "Real Madrid",    "avg": 86, "budget": 180, "objective": 2, "formation": "4-4-2", "stadium": "Santiago Bernabéu Stadium"},
     {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 2, "formation": "4-3-3", "stadium": "Allianz Arena"},
-    {"name": "Man United",     "avg": 82, "budget": 75, "objective": 3, "formation": "4-3-3", "stadium": "Old Trafford"},
+    {"name": "Napoli",     "avg": 85, "budget": 90, "objective": 4, "formation": "4-4-2", "stadium": "San Paolo"},
     {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 2, "formation": "4-3-3", "stadium": "Emirates Stadium"},
-    {"name": "AC Milan",        "avg": 83, "budget": 45, "objective": 3, "formation": "3-5-2", "stadium": "San Siro"},
+    {"name": "Inter Milan",      "avg": 85, "budget": 70, "objective": 4, "formation": "3-5-2", "stadium": "San Siro"},
     {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 3, "formation": "4-3-3", "stadium": "Stamford Bridge"},
     {"name": "Porto",            "avg": 82, "budget": 30, "objective": 5, "formation": "4-3-3", "stadium": "Do Dragao"},
-    {"name": "Strasbourg",       "avg": 80, "budget": 40, "objective": 5, "formation": "4-4-2", "stadium": "Stade de la Meinau"},
+    {"name": "Olympique Lyonnais",       "avg": 80, "budget": 30, "objective": 8, "formation": "4-3-3", "stadium": "Stade Geoffroy Guichard"},
 ]
 
 ORIGINS = {
@@ -18,12 +18,12 @@ ORIGINS = {
     "Barcelona": ["Spain","United States","Argentina","Netherlands","Chile"],
     "Real Madrid": ["Spain","England","Brazil","Belgium","Argentina","France"],
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
-    "Man United": ["England","Portugal","Uruguay","Netherlands","France"],
     "Arsenal": ["England","France","Spain","Germany","Netherlands"],
-    "AC Milan": ["Italy","France","Germany","Netherlands","United States"],
     "Chelsea": ["England","France","Brazil","Netherlands","Uruguay"],
     "Porto": ["Portugal","France","Brazil","Netherlands","Nigeria"],
-    "Strasbourg": ["France","Nigeria","Argentina","Portugal", "Belgium"]
+    "Inter Milan": ["Italy","France","Brazil","Netherlands","Uruguay"],
+    "Napoli": ["Italy","France","Brazil","Nigeria","Belgium"],
+    "Olympique Lyonnais": ["France","Morocco","Argentina","Belgium","Nigeria"],
 }
 
 FORMATIONS = {

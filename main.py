@@ -14,6 +14,12 @@ from transfersAI import *
 from transfersPlayer import *
 from survey import *
 
+BOARD_FIRING_MESSAGES = [
+    "Board Statement: {team} cannot overlook missing our objective. Your contract is terminated immediately.",
+    "Chairman's Briefing: Results fell short at {team}. We are making a managerial change with immediate effect.",
+    "Press Release: {team}'s board thanks you for your efforts but dismisses you after failing to meet expectations.",
+]
+
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
 def apply_retirements(teams):
@@ -96,13 +102,22 @@ def main():
             t.budget = base
             print(f"{t.name:<18} -> Base Budget: €{t.budget:,}")
 
-        user = manager_switch_option(user, table)
+        forced_switch = False
+        firing_message = None
+        user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
+        if user_pos is not None and user_pos > user.objective:
+            if random.random() < 0.10:
+                forced_switch = True
+                firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
+
+        if forced_switch:
+            user = manager_switch_option(user, table, forced=True, firing_message=firing_message)
+        else:
+            user = manager_switch_option(user, table, forced=False)
         prev_table = table[:]
         year += 1
 
         cont = yesno("\nRun another season? (y/n): ")
-
-        # ✳️ Ask for 3 price labels after every season, even if user decides to stop
         collect_price_labels(user, n=2, csv_path="price_labels.csv", year=year)
 
         if not cont:
