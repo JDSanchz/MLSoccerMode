@@ -20,10 +20,10 @@ ORIGINS = {
     "Bayern Munich": ["Germany","Japan","Portugal","France","United States"],
     "Arsenal": ["England","France","Spain","Germany","Netherlands"],
     "Chelsea": ["England","France","Brazil","Netherlands","Uruguay"],
-    "Porto": ["Portugal","France","Brazil","Netherlands","Nigeria"],
+    "Porto": ["Portugal","Mexico","Brazil","Netherlands","Nigeria"],
     "Inter Milan": ["Italy","France","Brazil","Netherlands","Uruguay"],
     "Napoli": ["Italy","France","Brazil","Nigeria","Belgium"],
-    "Olympique Lyonnais": ["France","Morocco","Argentina","Belgium","Nigeria"],
+    "Olympique Lyonnais": ["France","Morocco","Argentina","Belgium","Mexico"],
 }
 
 FORMATIONS = {
