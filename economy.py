@@ -23,8 +23,8 @@ def process_rewards_penalties(table):
     if len(eligible) >= 2:
         lucky_three = random.sample(eligible, 3)
         for lucky in lucky_three:
-            lucky.receive(30)
-            print(f"\nLucky Club: {lucky.name} receives €30M")
+            lucky.receive(40)
+            print(f"\nLucky Club: {lucky.name} receives €40M")
 
     dynasty_candidates = []
     for pos, t in enumerate(table, start=1):
