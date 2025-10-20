@@ -106,7 +106,7 @@ def main():
         firing_message = None
         user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
         if user_pos is not None and user_pos > user.objective:
-            if random.random() < 0.10:
+            if random.random() < 0.13:
                 forced_switch = True
                 firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
 

@@ -121,10 +121,10 @@ def ai_transfers(team, free_agents):
 def champion_poach_user(
     prev_table,
     user,
-    top_chance=0.60,
-    bottom_chance=0.30,
+    top_chance=0.70,
+    bottom_chance=0.20,
     premium_rate=0.15,
-    free_roll_chance=0.80
+    free_roll_chance=0.90
 ):
     if not prev_table or not user.all_players():
         return
@@ -243,7 +243,7 @@ def champion_poach_user(
 
 
 
-def make_free_agent_pool(num=45):
+def make_free_agent_pool(num=55):
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
     all_origins = [n for arr in ORIGINS.values() for n in arr]
 
@@ -261,11 +261,11 @@ def make_free_agent_pool(num=45):
         pot = roll_potential(rating)
         return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
-    pool = [make_player(random.choice(base_positions), 18, 38, 74, 88) for _ in range(num)]
+    pool = [make_player(random.choice(base_positions), 18, 35, 74, 88) for _ in range(num)]
 
     if len(pool) > 40:
-        young = sorted([p for p in pool if p.age <= 27], key=lambda x: x.value(), reverse=True)[:30]
-        old   = sorted([p for p in pool if 28 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:10]
+        young = sorted([p for p in pool if p.age <= 27], key=lambda x: x.value(), reverse=True)[:33]
+        old   = sorted([p for p in pool if 28 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:7]
         pool = young + old
 
     return pool
