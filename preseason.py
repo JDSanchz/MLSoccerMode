@@ -38,12 +38,10 @@ def end_contracts_flow(team):
         idx = prompt_int(f"Release which player (1..{len(pool)}): ", 1, len(pool)) - 1
         victim = pool[idx]
         value = victim.value()
-        fee = min(10, max(1, int(round(value * 0.12))))
-        capped = fee == 10
+        fee = 1  # flat €1M release payout
 
         print(f"\n{victim.name} — estimated value {_fmt_currency(value)}.")
-        clause_note = " (cap reached)" if capped else ""
-        print(f"Release payout (12% capped at €10M): {_fmt_currency(fee)}{clause_note}.")
+        print(f"Release payout: {_fmt_currency(fee)}.")
         print(f"Club budget before release: {_fmt_currency(team.budget)}.")
         if yesno("Confirm release? (y/n): "):
             if team.pay(fee):
@@ -151,7 +149,7 @@ def action_transfer_hub(user, teams, TM_OPEN, TM_CLOSE,
                         prev_table=None):
     def _inner():
         print_subtitle(f"Transfer Window: {TM_OPEN.isoformat()} → {TM_CLOSE.isoformat()}")
-        fa = make_free_agent_pool(30)
+        fa = make_free_agent_pool()
         poach_premium_rate = 0.15
         champion_poach_user(prev_table, user, premium_rate=poach_premium_rate)
         user_poach_players(user, teams, premium_rate=poach_premium_rate)

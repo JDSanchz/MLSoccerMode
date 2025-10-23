@@ -148,8 +148,7 @@ def user_transfers(team, free_agents):
         p.display_potential_range = i in selected_for_display
 
     while free_agents:
-        ans = input("Make a signing? (y/n): ").strip().lower()
-        if ans != "y":
+        if not yesno("Make a signing? (y/n): "):
             break
 
         affordable = [p for p in free_agents if p.value() <= team.budget]

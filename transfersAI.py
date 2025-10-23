@@ -54,8 +54,8 @@ def ai_transfers(team, free_agents):
 
     pick_positions = sample_need_positions()
 
-    # If planned multi-signing leaves < €30M per signing, do just one
-    if n_transfers > 1 and (team.budget // n_transfers) < 30:
+    # If planned multi-signing leaves < €40M per signing, do just one
+    if n_transfers > 1 and (team.budget // n_transfers) < 40:
         n_transfers = 1
         # Focus positions: keep existing picks (or pick one strongest need)
         if pick_positions:
@@ -146,10 +146,17 @@ def champion_poach_user(
         buyer.budget -= total  # may go negative if allow_negative=True
         user.receive(total)
 
-        for group in (user.starters, user.bench, user.reserves):
+        source_group = "Reserves"
+        for label, group in (("Starters", user.starters), ("Bench", user.bench), ("Reserves", user.reserves)):
             if target in group:
+                source_group = label
                 group.remove(target)
                 break
+        source_label = {
+            "Starters": "starting lineup",
+            "Bench": "bench",
+            "Reserves": "reserves",
+        }.get(source_group, source_group.lower())
 
         buyer.reserves.append(target)
         if hasattr(user, "unprotect_player"):
@@ -160,6 +167,7 @@ def champion_poach_user(
         neg_note = " (budget now negative)" if buyer.budget < 0 else ""
         print(
             f"\nPOACH! {buyer.name} signed {target.name} {flag} "
+            f"({target.pos}, {target.rating} OVR) from your {source_label} "
             f"for €{base:,} + {int(premium_rate*100)}% (€{prem:,}) = €{total:,}."
         )
         print(f"{user.name} receives €{total:,}. {buyer.name} budget: €{buyer.budget:,}{neg_note}")
@@ -167,14 +175,21 @@ def champion_poach_user(
 
     def free_move_from_user_reserves(target, dest_team):
         # Remove strictly from reserves (per your spec)
+        source_group = "Reserves"
         if target in user.reserves:
             user.reserves.remove(target)
         else:
             # Safety: remove if it slipped into other groups
-            for group in (user.starters, user.bench):
+            for label, group in (("Starters", user.starters), ("Bench", user.bench)):
                 if target in group:
+                    source_group = label
                     group.remove(target)
                     break
+        source_label = {
+            "Starters": "starting lineup",
+            "Bench": "bench",
+            "Reserves": "reserves",
+        }.get(source_group, source_group.lower())
         dest_team.reserves.append(target)
         if hasattr(user, "unprotect_player"):
             user.unprotect_player(target)
@@ -182,7 +197,8 @@ def champion_poach_user(
         flag = target.flag() if hasattr(target, "flag") else f"({target.nation})"
         print(
             f"\nFREE TRANSFER: {target.name} {flag} left {user.name} "
-            f"for {dest_team.name} (lowest avg rating: {dest_team.avg_rating():.1f})."
+            f"({target.pos}, {target.rating} OVR, {source_label}) for {dest_team.name} "
+            f"(lowest avg rating: {dest_team.avg_rating():.1f})."
         )
 
     def calc_max_potential(p):
@@ -243,7 +259,7 @@ def champion_poach_user(
 
 
 
-def make_free_agent_pool(num=55):
+def make_free_agent_pool(num=70):
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
     all_origins = [n for arr in ORIGINS.values() for n in arr]
 
@@ -261,11 +277,17 @@ def make_free_agent_pool(num=55):
         pot = roll_potential(rating)
         return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
+    # Create full pool
     pool = [make_player(random.choice(base_positions), 18, 35, 74, 88) for _ in range(num)]
 
-    if len(pool) > 40:
-        young = sorted([p for p in pool if p.age <= 27], key=lambda x: x.value(), reverse=True)[:33]
-        old   = sorted([p for p in pool if 28 <= p.age <= 38], key=lambda x: x.value(), reverse=True)[:7]
-        pool = young + old
+    # 1) Remove 5 lowest-rated players age ≥ 30
+    over29 = [p for p in pool if p.age >= 30]
+    remove1 = set(sorted(over29, key=lambda p: p.rating)[:5])
 
-    return pool
+    remaining = [p for p in pool if p not in remove1]
+
+    # 2) From remaining, remove 5 lowest market value
+    remove2 = set(sorted(remaining, key=lambda p: p.value())[:5])
+
+    final_pool = [p for p in remaining if p not in remove2]
+    return final_pool

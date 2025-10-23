@@ -1,15 +1,16 @@
 TEAMS_INIT = [
     {"name": "PSG",            "avg": 88, "budget": 250, "objective": 1, "formation": "4-3-3", "stadium": "Parc des Princes"},
     {"name": "Liverpool",      "avg": 88, "budget": 300, "objective": 1, "formation": "4-4-2", "stadium": "Anfield"},
-    {"name": "Barcelona",      "avg": 86, "budget": 100, "objective": 2, "formation": "4-3-3", "stadium": "Spotify Camp Nou"},
-    {"name": "Real Madrid",    "avg": 86, "budget": 180, "objective": 2, "formation": "4-4-2", "stadium": "Santiago Bernabéu Stadium"},
-    {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 2, "formation": "4-3-3", "stadium": "Allianz Arena"},
+    {"name": "Barcelona",      "avg": 86, "budget": 100, "objective": 3, "formation": "4-3-3", "stadium": "Spotify Camp Nou"},
+    {"name": "Real Madrid",    "avg": 86, "budget": 180, "objective": 1, "formation": "4-4-2", "stadium": "Santiago Bernabéu Stadium"},
+    {"name": "Bayern Munich",  "avg": 85, "budget": 120, "objective": 3, "formation": "4-3-3", "stadium": "Allianz Arena"},
     {"name": "Napoli",     "avg": 85, "budget": 90, "objective": 4, "formation": "4-4-2", "stadium": "San Paolo"},
-    {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 2, "formation": "4-3-3", "stadium": "Emirates Stadium"},
+    {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 3, "formation": "4-3-3", "stadium": "Emirates Stadium"},
     {"name": "Inter Milan",      "avg": 85, "budget": 70, "objective": 4, "formation": "3-5-2", "stadium": "San Siro"},
-    {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 3, "formation": "4-3-3", "stadium": "Stamford Bridge"},
-    {"name": "Porto",            "avg": 82, "budget": 30, "objective": 5, "formation": "4-3-3", "stadium": "Do Dragao"},
-    {"name": "Olympique Lyonnais",       "avg": 80, "budget": 30, "objective": 8, "formation": "4-3-3", "stadium": "Stade Geoffroy Guichard"},
+    {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 4, "formation": "4-3-3", "stadium": "Stamford Bridge"},
+    {"name": "Porto",            "avg": 82, "budget": 30, "objective": 9, "formation": "4-3-3", "stadium": "Do Dragao"},
+    {"name": "Olympique Lyonnais",       "avg": 80, "budget": 30, "objective": 10, "formation": "4-3-3", "stadium": "Stade Geoffroy Guichard"},
+    {"name": "Atletico Madrid",     "avg": 85, "budget": 120, "objective": 4, "formation": "4-4-2", "stadium": "Wanda Metropolitano"},
 ]
 
 ORIGINS = {
@@ -24,6 +25,7 @@ ORIGINS = {
     "Inter Milan": ["Italy","France","Brazil","Netherlands","Uruguay"],
     "Napoli": ["Italy","France","Brazil","Nigeria","Belgium"],
     "Olympique Lyonnais": ["France","Morocco","Argentina","Belgium","Mexico"],
+    "Atletico Madrid": ["Spain","Belgium","Argentina","Netherlands","Brazil"],
 }
 
 FORMATIONS = {

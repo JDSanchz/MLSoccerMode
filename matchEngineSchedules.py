@@ -1,4 +1,5 @@
 import random
+import math
 import numpy as np
 from datetime import timedelta
 
@@ -86,6 +87,7 @@ def simulate_match(teamA, teamB, venue, when):
     teamA.ga += gB
     teamB.gf += gB
     teamB.ga += gA
+    return gA, gB
 
 
 # =========================
@@ -106,11 +108,19 @@ def build_home_and_away(teams):
 
 
 def assign_dates(fixtures, season_start, season_end):
+    if not fixtures:
+        return []
+
     all_weekend = list(frisa_dates(season_start, season_end))
-    if len(all_weekend) < len(fixtures):
-        raise RuntimeError("Not enough Fri/Sat/Sun dates to host all matches.")
-    picked = spread_pick(all_weekend, len(fixtures))
-    scheduled = list(zip(picked, fixtures))
+    if not all_weekend:
+        raise RuntimeError("Season calendar has no Fri/Sat/Sun dates.")
+
+    slots_per_day = max(1, math.ceil(len(fixtures) / len(all_weekend)))
+    expanded_days = []
+    for day in all_weekend:
+        expanded_days.extend([day] * slots_per_day)
+
+    match_days = expanded_days[:len(fixtures)]
+    scheduled = list(zip(match_days, fixtures))
     scheduled.sort(key=lambda x: x[0])
     return scheduled
-

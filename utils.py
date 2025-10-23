@@ -1,5 +1,17 @@
 from datetime import date
+from typing import Callable, Optional
+
 from prompts import prompt_int
+
+YesNoHandler = Callable[[str], bool]
+_yesno_handler: Optional[YesNoHandler] = None
+
+
+def set_yesno_handler(handler: Optional[YesNoHandler]) -> None:
+    """Register a custom handler for yes/no prompts."""
+    global _yesno_handler
+    _yesno_handler = handler
+
 
 def season_dates(year: int):
     tm_open = date(year, 6, 16)
@@ -9,11 +21,16 @@ def season_dates(year: int):
     season_end = date(year + 1, 6, 15)
     return tm_open, tm_close, processing, season_start, season_end
 
+
 def yesno(msg: str) -> bool:
+    if _yesno_handler is not None:
+        return _yesno_handler(msg)
     return input(msg).strip().lower().startswith("y")
+
 
 def clamp(x, lo, hi):
     return max(lo, min(hi, x))
+
 
 def manager_switch_option(user, table, forced=False, firing_message=None):
     # Bottom 2 in the final table
