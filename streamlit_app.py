@@ -1,9 +1,10 @@
+import html
 import io
 import random
 import time
 from contextlib import redirect_stdout
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import streamlit as st
 
@@ -12,7 +13,7 @@ try:
 except ImportError:  # pragma: no cover - Streamlit bundles pandas, but guard for safety
     pd = None
 
-from constants import INIT_YEAR, TEAMS_INIT, RESERVES
+from constants import INIT_YEAR, TEAMS_INIT, RESERVES, FORMATIONS
 from economy import next_season_base_budget, process_rewards_penalties
 from injuries import assign_season_injuries, recover_injuries
 from main import BOARD_FIRING_MESSAGES, apply_retirements, standings_table
@@ -30,6 +31,107 @@ from utils import season_dates
 
 MAX_LOG_LINES = 500
 TRANSFER_PREMIUM_RATE = 0.15
+FORMATION_LAYOUTS: Dict[str, Dict[str, List[Tuple[float, float]]]] = {
+    "4-3-3": {
+        "GK": [(50, 92)],
+        "CB": [(32, 74), (68, 74)],
+        "LB": [(15, 68)],
+        "RB": [(85, 68)],
+        "CM": [(30, 50), (50, 42), (70, 50)],
+        "LW": [(20, 26)],
+        "RW": [(80, 26)],
+        "ST": [(50, 16)],
+    },
+    "4-4-2": {
+        "GK": [(50, 92)],
+        "CB": [(32, 74), (68, 74)],
+        "LB": [(15, 68)],
+        "RB": [(85, 68)],
+        "CDM": [(40, 52)],
+        "CAM": [(60, 44)],
+        "LW": [(22, 32)],
+        "RW": [(78, 32)],
+        "ST": [(44, 18), (56, 18)],
+    },
+    "3-5-2": {
+        "GK": [(50, 92)],
+        "CB": [(28, 74), (50, 74), (72, 74)],
+        "CDM": [(38, 56), (62, 56)],
+        "CAM": [(50, 42)],
+        "LW": [(22, 36)],
+        "RW": [(78, 36)],
+        "ST": [(44, 20), (56, 20)],
+    },
+}
+
+PITCH_CSS = """
+<style>
+.pitch-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto 1.2rem auto;
+}
+.pitch-surface {
+    position: relative;
+    width: 100%;
+    padding-top: 150%;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #0b6b29 0%, #13813d 100%);
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.4), 0 12px 32px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+.pitch-surface::before,
+.pitch-surface::after {
+    content: "";
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    border: 2px solid rgba(255,255,255,0.45);
+    border-radius: 8px;
+}
+.pitch-surface::before {
+    top: 8%;
+    bottom: 8%;
+}
+.pitch-surface::after {
+    top: 24%;
+    bottom: 24%;
+    border-left: none;
+    border-right: none;
+}
+.pitch-player {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 120px;
+    max-width: 160px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(12,12,12,0.68);
+    color: #f2f2f2;
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    border: 1px solid rgba(255,255,255,0.35);
+}
+.pitch-player__name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pitch-player__meta {
+    font-size: 0.78rem;
+    opacity: 0.8;
+}
+@media (max-width: 768px) {
+    .pitch-player {
+        min-width: 90px;
+        font-size: 0.75rem;
+    }
+}
+</style>
+"""
 
 
 def set_flash(state: Dict[str, Any], level: str, message: str) -> None:
@@ -67,6 +169,7 @@ def init_game_state() -> Dict[str, Any]:
     teams = [Team(meta) for meta in TEAMS_INIT]
     for team in teams:
         team.generate_initial_squad()
+        team.top_up_youth(is_user=False)
         organize_squad(team)
 
     return {
@@ -593,6 +696,12 @@ def roster_rows(players) -> List[Dict[str, Any]]:
             if getattr(player, "injured_until", None)
             else "Fit"
         )
+        revealed = getattr(player, "display_potential_range", False)
+        potential_range = (
+            getattr(player, "potential_range", "")
+            if revealed
+            else "Hidden"
+        )
         rows.append(
             {
                 "Name": player.name,
@@ -600,8 +709,7 @@ def roster_rows(players) -> List[Dict[str, Any]]:
                 "Nation": player.nation,
                 "Age": player.age,
                 "OVR": player.rating,
-                "Potential": player.potential,
-                "Range": getattr(player, "potential_range", ""),
+                "Range": potential_range,
                 "Status": injury,
             }
         )
@@ -618,6 +726,7 @@ def free_agent_rows(players) -> List[Dict[str, Any]]:
         )
         rows.append(
             {
+                "Token": str(id(player)),
                 "Name": player.name,
                 "Pos": player.pos,
                 "Nation": player.nation,
@@ -636,6 +745,244 @@ def render_table(records: List[Dict[str, Any]]) -> None:
         st.dataframe(df, use_container_width=True)
     else:  # pragma: no cover - pandas is expected, but provide fallback
         st.table(records)
+
+
+def render_filterable_table(
+    records: List[Dict[str, Any]],
+    table_id: str,
+    title: str,
+    pos_field: str = "Pos",
+    rating_field: str = "OVR",
+    on_render: Optional[Callable[[Any], None]] = None,
+    exclude_columns: Optional[Iterable[str]] = None,
+) -> None:
+    if not records:
+        st.info(f"No {title.lower()} available.")
+        return
+
+    if pd is None:  # pragma: no cover - fallback when pandas unavailable
+        st.table(records)
+        return
+
+    df = pd.DataFrame(records)
+    working = df.copy()
+    exclude_set = set(exclude_columns or [])
+
+    if pos_field in working.columns:
+        positions = sorted(
+            {pos for pos in working[pos_field].dropna().unique() if isinstance(pos, str)}
+        )
+        if positions:
+            selected_positions = st.multiselect(
+                f"{title} positions",
+                positions,
+                default=positions,
+                key=f"{table_id}_pos_filter",
+            )
+            if selected_positions:
+                working = working[working[pos_field].isin(selected_positions)]
+            else:
+                working = working.iloc[0:0]
+
+    if rating_field in working.columns:
+        working[rating_field] = pd.to_numeric(
+            working[rating_field], errors="coerce"
+        )
+        rating_series = working[rating_field].dropna()
+        if not rating_series.empty:
+            min_rating = int(rating_series.min())
+            max_rating = int(rating_series.max())
+            if min_rating != max_rating:
+                min_selected, max_selected = st.slider(
+                    f"{title} rating range",
+                    min_rating,
+                    max_rating,
+                    (min_rating, max_rating),
+                    key=f"{table_id}_rating_filter",
+                )
+                working = working[
+                    (working[rating_field] >= min_selected)
+                    & (working[rating_field] <= max_selected)
+                ]
+            else:
+                st.caption(f"{title} rating fixed at {min_rating}.")
+        else:
+            working = working.iloc[0:0]
+
+    if working.empty:
+        st.info(f"No {title.lower()} match your filters.")
+        return
+
+    columns = [col for col in working.columns if col not in exclude_set]
+    if not columns:
+        columns = list(working.columns)
+
+    default_sort_index = (
+        columns.index(rating_field) if rating_field in columns else 0
+    )
+    sort_column = st.selectbox(
+        f"{title} sort column",
+        columns,
+        index=default_sort_index,
+        key=f"{table_id}_sort_column",
+    )
+    sort_order = st.radio(
+        f"{title} sort order",
+        ["Descending", "Ascending"],
+        horizontal=True,
+        index=0,
+        key=f"{table_id}_sort_order",
+    )
+
+    working = working.sort_values(
+        by=sort_column,
+        ascending=(sort_order == "Ascending"),
+        kind="mergesort",
+    )
+
+    filtered = working.reset_index(drop=True)
+
+    if on_render:
+        on_render(filtered)
+        return
+
+    display_df = filtered.drop(columns=exclude_set, errors="ignore")
+    st.dataframe(display_df, use_container_width=True)
+
+
+PITCH_CSS_INJECTED = False
+
+
+def inject_pitch_css() -> None:
+    global PITCH_CSS_INJECTED
+    if PITCH_CSS_INJECTED:
+        return
+    st.markdown(PITCH_CSS, unsafe_allow_html=True)
+    PITCH_CSS_INJECTED = True
+
+
+def formation_slots(formation: str) -> List[str]:
+    config = FORMATIONS.get(formation, {})
+    slots: List[str] = []
+    for pos, count in config.items():
+        slots.extend([pos] * count)
+    return slots
+
+
+def render_formation_chart(team: Team) -> None:
+    formation = team.formation
+    layout = FORMATION_LAYOUTS.get(formation)
+    slots = formation_slots(formation)
+    if not layout or not slots:
+        st.info(f"No formation chart available for {formation}.")
+        return
+
+    inject_pitch_css()
+
+    starters = list(team.starters)
+    if len(starters) < len(slots):
+        starters.extend([None] * (len(slots) - len(starters)))
+
+    used_counts: Dict[str, int] = {}
+    card_html: List[str] = []
+    fallback_coords = (50.0, 50.0)
+    for player, pos in zip(starters, slots):
+        options = layout.get(pos, [])
+        idx = used_counts.get(pos, 0)
+        if options:
+            coord_idx = min(idx, len(options) - 1)
+            x, y = options[coord_idx]
+        else:
+            x, y = fallback_coords
+        used_counts[pos] = idx + 1
+
+        if player is None:
+            name = html.escape(pos)
+            meta = "Slot vacant"
+        else:
+            name = html.escape(player.name)
+            meta = f"{pos} · {player.rating} OVR"
+
+        card_html.append(
+            f'<div class="pitch-player" style="left:{x}%; top:{y}%;">'
+            f'<div class="pitch-player__name">{name}</div>'
+            f'<div class="pitch-player__meta">{html.escape(meta)}</div>'
+            "</div>"
+        )
+
+    markup = (
+        "<div class='pitch-wrapper'>"
+        "<div class='pitch-surface'>"
+        f"{''.join(card_html)}"
+        "</div>"
+        "</div>"
+    )
+    st.markdown(markup, unsafe_allow_html=True)
+
+
+def render_reserves_with_actions(state: Dict[str, Any], team: Team) -> None:
+    st.markdown("**Reserves**")
+    reserves = list(team.reserves)
+    if not reserves:
+        st.info("No reserve players at the moment.")
+        return
+
+    widths = [1.1, 3.2, 1.0, 1.6, 0.9, 0.9, 1.6, 1.8]
+    headers = ["Action", "Name", "Pos", "Nation", "Age", "OVR", "Range", "Status"]
+    header_cols = st.columns(widths)
+    for col, title in zip(header_cols, headers):
+        col.markdown(f"**{title}**")
+
+    def safe_int(value: Any) -> Any:
+        if value in ("", None):
+            return ""
+        try:
+            if pd.isna(value):
+                return ""
+        except TypeError:
+            pass
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return value
+
+    for player in reserves:
+        token = f"Reserves:{id(player)}"
+        potential_range = (
+            getattr(player, "potential_range", "")
+            if getattr(player, "display_potential_range", False)
+            else "Hidden"
+        )
+        injury = (
+            player.injured_until.isoformat()
+            if getattr(player, "injured_until", None)
+            else "Fit"
+        )
+
+        cols = st.columns(widths)
+        with cols[0]:
+            if st.button(
+                "Release",
+                key=f"release_reserve_{token}",
+                help="Release player for €1M fee.",
+                use_container_width=True,
+            ):
+                release_player(state, token)
+                rerun_app()
+        with cols[1]:
+            st.markdown(f"**{player.name}**")
+        with cols[2]:
+            st.write(player.pos)
+        with cols[3]:
+            st.write(player.nation)
+        with cols[4]:
+            st.write(safe_int(player.age))
+        with cols[5]:
+            st.write(safe_int(player.rating))
+        with cols[6]:
+            st.write(potential_range)
+        with cols[7]:
+            st.write(injury)
 
 
 def render_overview(state: Dict[str, Any]) -> None:
@@ -726,35 +1073,95 @@ def render_transfers(state: Dict[str, Any]) -> None:
     st.markdown("### Free Agents")
     free_agents = state.get("free_agents", [])
     if free_agents:
-        agent_tokens = [str(id(p)) for p in free_agents]
-        agent_lookup = {token: player for token, player in zip(agent_tokens, free_agents)}
+        agent_lookup = {str(id(player)): player for player in free_agents}
 
-        def format_agent(token: str) -> str:
-            player = agent_lookup.get(token)
-            if not player:
-                return "Unavailable"
-            pot = (
-                getattr(player, "potential_range", "")
-                if getattr(player, "display_potential_range", False)
-                else "Hidden"
-            )
-            return (
-                f"{player.name} · {player.pos} · {player.rating} OVR · Age {player.age} · "
-                f"€{player.value():,}M · Pot {pot}"
-            )
+        def render_free_agent_results(filtered_df) -> None:
+            display_df = filtered_df.drop(columns=["Token"], errors="ignore")
+            if display_df.empty:
+                st.info("No free agents match your filters.")
+                return
 
-        with st.form("free_agent_form"):
-            choice = st.selectbox("Select a free agent", agent_tokens, format_func=format_agent)
-            submitted = st.form_submit_button(
-                "Sign Player",
-                disabled=reserves_full,
-                help="Free up reserve slots before signing." if reserves_full else None,
-            )
-            if submitted:
-                sign_free_agent(state, choice)
-                rerun_app()
+            widths = [1.1, 3.2, 1.0, 1.6, 0.9, 0.9, 1.6, 1.4]
+            headers = ["Action", "Name", "Pos", "Nation", "Age", "OVR", "Potential Range", "Value (€M)"]
+            header_cols = st.columns(widths)
+            for col, title in zip(header_cols, headers):
+                col.markdown(f"**{title}**")
 
-        render_table(free_agent_rows(free_agents))
+            def safe_int(value: Any) -> Any:
+                if value in ("", None):
+                    return ""
+                try:
+                    if pd.isna(value):
+                        return ""
+                except TypeError:
+                    pass
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return value
+
+            for _, row in filtered_df.iterrows():
+                token = row.get("Token")
+                player = agent_lookup.get(token)
+                cols = st.columns(widths)
+
+                help_text = None
+                disabled = False
+                if reserves_full:
+                    help_text = "Free up reserve slots before signing."
+                    disabled = True
+                if player is None:
+                    disabled = True
+
+                with cols[0]:
+                    if st.button(
+                        "Sign",
+                        key=f"sign_free_agent_{token}",
+                        disabled=disabled,
+                        help=help_text,
+                        use_container_width=True,
+                    ):
+                        sign_free_agent(state, token)
+                        rerun_app()
+
+                with cols[1]:
+                    st.markdown(f"**{row.get('Name', '')}**")
+                with cols[2]:
+                    st.write(row.get("Pos", ""))
+                with cols[3]:
+                    st.write(row.get("Nation", ""))
+                with cols[4]:
+                    st.write(safe_int(row.get("Age", "")))
+                with cols[5]:
+                    st.write(safe_int(row.get("OVR", "")))
+                with cols[6]:
+                    potential_range = row.get("Potential Range", "")
+                    try:
+                        if pd.isna(potential_range):
+                            potential_range = ""
+                    except TypeError:
+                        pass
+                    st.write(potential_range)
+                with cols[7]:
+                    value = row.get("Value (€M)", "")
+                    if value in ("", None):
+                        st.write("")
+                    else:
+                        try:
+                            if pd.isna(value):  # type: ignore[arg-type]
+                                st.write("")
+                            else:
+                                st.write(f"€{int(value):,}M")
+                        except (ValueError, TypeError):
+                            st.write(value)
+
+        render_filterable_table(
+            free_agent_rows(free_agents),
+            "free_agents",
+            "Free Agents",
+            on_render=render_free_agent_results,
+            exclude_columns=["Token"],
+        )
     else:
         st.info("No free agents remain in the pool.")
 
@@ -772,110 +1179,122 @@ def render_transfers(state: Dict[str, Any]) -> None:
                     continue
                 poach_targets.append(
                     {
-                        "token": f"{idx}:{id(player)}",
-                        "club": club.name,
-                        "group": group_name,
-                        "player": player,
-                        "base": base,
-                        "premium": premium,
-                        "total": total,
+                        "Token": f"{idx}:{id(player)}",
+                        "Club": club.name,
+                        "Group": group_name,
+                        "Name": player.name,
+                        "Pos": player.pos,
+                        "OVR": player.rating,
+                        "Age": player.age,
+                        "Total (€M)": total,
+                        "Base (€M)": base,
+                        "Premium (€M)": premium,
                     }
                 )
 
     if poach_targets:
-        poach_lookup = {entry["token"]: entry for entry in poach_targets}
+        def render_poach_results(filtered_df) -> None:
+            display_df = filtered_df.drop(columns=["Token"], errors="ignore")
+            if display_df.empty:
+                st.info("No poach targets match your filters.")
+                return
 
-        def format_poach(token: str) -> str:
-            entry = poach_lookup.get(token)
-            if not entry:
-                return "Unavailable"
-            p = entry["player"]
-            return (
-                f"{p.name} · {p.pos} · {p.rating} OVR · {entry['club']} "
-                f"(€{entry['total']:,}M: base €{entry['base']:,}M + premium €{entry['premium']:,}M)"
-            )
+            widths = [1.1, 2.6, 1.0, 1.8, 1.0, 0.9, 1.6, 1.6, 1.6]
+            headers = [
+                "Action",
+                "Name",
+                "Pos",
+                "Club",
+                "Group",
+                "OVR",
+                "Age",
+                "Total (€M)",
+                "Premium (€M)",
+            ]
+            header_cols = st.columns(widths)
+            for col, title in zip(header_cols, headers):
+                col.markdown(f"**{title}**")
 
-        with st.form("poach_form"):
-            choice = st.selectbox(
-                "Affordable targets",
-                list(poach_lookup.keys()),
-                format_func=format_poach,
-            )
-            submitted = st.form_submit_button(
-                "Poach Player",
-                disabled=reserves_full,
-                help="Free up reserve slots before poaching." if reserves_full else None,
-            )
-            if submitted:
-                poach_player(state, choice)
-                rerun_app()
+            def safe_int(value: Any) -> Any:
+                if value in ("", None):
+                    return ""
+                try:
+                    if pd.isna(value):
+                        return ""
+                except TypeError:
+                    pass
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return value
 
-        poach_rows = []
-        for entry in poach_targets:
-            player = entry["player"]
-            poach_rows.append(
-                {
-                    "Club": entry["club"],
-                    "Group": entry["group"],
-                    "Player": player.name,
-                    "Pos": player.pos,
-                    "OVR": player.rating,
-                    "Age": player.age,
-                    "Total (€M)": entry["total"],
-                    "Base (€M)": entry["base"],
-                    "Premium (€M)": entry["premium"],
-                }
-            )
-        render_table(poach_rows)
+            for _, row in filtered_df.iterrows():
+                token = row.get("Token")
+                cols = st.columns(widths)
+
+                help_text = None
+                disabled = False
+                if reserves_full:
+                    help_text = "Free up reserve slots before poaching."
+                    disabled = True
+
+                with cols[0]:
+                    if st.button(
+                        "Poach",
+                        key=f"poach_target_{token}",
+                        disabled=disabled,
+                        help=help_text,
+                        use_container_width=True,
+                    ):
+                        poach_player(state, token)
+                        rerun_app()
+
+                with cols[1]:
+                    st.markdown(f"**{row.get('Name', '')}**")
+                with cols[2]:
+                    st.write(row.get("Pos", ""))
+                with cols[3]:
+                    st.write(row.get("Club", ""))
+                with cols[4]:
+                    st.write(row.get("Group", ""))
+                with cols[5]:
+                    st.write(safe_int(row.get("OVR", "")))
+                with cols[6]:
+                    st.write(safe_int(row.get("Age", "")))
+                with cols[7]:
+                    total_val = row.get("Total (€M)", "")
+                    if total_val in ("", None):
+                        st.write("")
+                    else:
+                        try:
+                            if pd.isna(total_val):  # type: ignore[arg-type]
+                                st.write("")
+                            else:
+                                st.write(f"€{int(total_val):,}M")
+                        except (ValueError, TypeError):
+                            st.write(total_val)
+                with cols[8]:
+                    premium_val = row.get("Premium (€M)", "")
+                    if premium_val in ("", None):
+                        st.write("")
+                    else:
+                        try:
+                            if pd.isna(premium_val):  # type: ignore[arg-type]
+                                st.write("")
+                            else:
+                                st.write(f"€{int(premium_val):,}M")
+                        except (ValueError, TypeError):
+                            st.write(premium_val)
+
+        render_filterable_table(
+            poach_targets,
+            "poach_targets",
+            "Poach Targets",
+            on_render=render_poach_results,
+            exclude_columns=["Token"],
+        )
     else:
         st.info("No affordable poach targets available with the current budget.")
-
-    st.markdown("### Release Players")
-    release_options = []
-    groups = [("Starters", user.starters), ("Bench", user.bench), ("Reserves", user.reserves)]
-    for group_name, group in groups:
-        for player in group:
-            release_options.append(
-                {
-                    "token": f"{group_name}:{id(player)}",
-                    "group": group_name,
-                    "player": player,
-                }
-            )
-
-    if release_options:
-        release_lookup = {entry["token"]: entry for entry in release_options}
-
-        def format_release(token: str) -> str:
-            entry = release_lookup.get(token)
-            if not entry:
-                return "Unavailable"
-            p = entry["player"]
-            return f"{entry['group']} · {p.name} · {p.pos} · {p.rating} OVR · Age {p.age}"
-
-        with st.form("release_form"):
-            choice = st.selectbox("Choose a player to release (cost €1M)", list(release_lookup.keys()), format_func=format_release)
-            submitted = st.form_submit_button("Release Player")
-            if submitted:
-                release_player(state, choice)
-                rerun_app()
-
-        release_rows = []
-        for entry in release_options:
-            player = entry["player"]
-            release_rows.append(
-                {
-                    "Group": entry["group"],
-                    "Name": player.name,
-                    "Pos": player.pos,
-                    "OVR": player.rating,
-                    "Age": player.age,
-                    "Nation": player.nation,
-                }
-            )
-        render_table(release_rows)
-    else:
-        st.info("No players available to release.")
 
     st.markdown("---")
     if st.button("Finalize Transfer Window & Begin Season"):
@@ -890,16 +1309,19 @@ def render_squad(state: Dict[str, Any]) -> None:
 
     team: Team = state["teams"][state["user_index"]]
     st.subheader(f"{team.name} Squad Overview")
+    st.markdown(f"**Formation:** {team.formation}")
+    render_formation_chart(team)
 
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Starters**")
         render_table(roster_rows(team.starters))
+    with col2:
         st.markdown("**Bench**")
         render_table(roster_rows(team.bench))
-    with col2:
-        st.markdown("**Reserves**")
-        render_table(roster_rows(team.reserves))
+
+    st.markdown("")
+    render_reserves_with_actions(state, team)
 
 
 def render_history(state: Dict[str, Any]) -> None:
