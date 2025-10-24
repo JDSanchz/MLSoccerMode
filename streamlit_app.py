@@ -15,11 +15,12 @@ except ImportError:  # pragma: no cover - Streamlit bundles pandas, but guard fo
 from app_components import (
     free_agent_rows,
     render_filterable_table,
+    render_formation_chart,
     render_reserves_with_actions,
     render_table,
     roster_rows,
 )
-from constants import INIT_YEAR, TEAMS_INIT, RESERVES
+from constants import FORMATIONS, INIT_YEAR, TEAMS_INIT, RESERVES
 from economy import next_season_base_budget, process_rewards_penalties
 from injuries import assign_season_injuries, recover_injuries
 from main import BOARD_FIRING_MESSAGES, apply_retirements, standings_table
@@ -918,8 +919,27 @@ def render_squad(state: Dict[str, Any]) -> None:
         return
 
     team: Team = state["teams"][state["user_index"]]
+    organize_squad(team)
     st.subheader(f"{team.name} Squad Overview")
+
+    formations = list(FORMATIONS.keys())
+    current_formation = team.formation if team.formation in formations else formations[0]
+    selected_formation = st.selectbox(
+        "Formation",
+        formations,
+        index=formations.index(current_formation),
+        key=f"formation_select_{team.name}",
+        help="Adjust your tactical setup.",
+    )
+    if selected_formation != team.formation:
+        team.formation = selected_formation
+        organize_squad(team)
+        append_log(state, f"{team.name} switched to a {selected_formation} formation.")
+        rerun_app()
+        return
+
     st.markdown(f"**Formation:** {team.formation}")
+    render_formation_chart(team)
 
     col1, col2 = st.columns(2)
     with col1:

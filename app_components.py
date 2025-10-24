@@ -4,6 +4,7 @@ import html
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     import pandas as pd  # type: ignore
@@ -33,11 +34,11 @@ FORMATION_LAYOUTS: Dict[str, Dict[str, List[tuple[float, float]]]] = {
         "CB": [(32, 74), (68, 74)],
         "LB": [(15, 68)],
         "RB": [(85, 68)],
-        "CDM": [(40, 52)],
-        "CAM": [(60, 44)],
+        "CDM": [(50, 56)],
+        "CAM": [(50, 40)],
         "LW": [(22, 32)],
         "RW": [(78, 32)],
-        "ST": [(44, 18), (56, 18)],
+        "ST": [(40, 18), (60, 18)],
     },
     "3-5-2": {
         "GK": [(50, 92)],
@@ -46,7 +47,7 @@ FORMATION_LAYOUTS: Dict[str, Dict[str, List[tuple[float, float]]]] = {
         "CAM": [(50, 42)],
         "LW": [(22, 36)],
         "RW": [(78, 36)],
-        "ST": [(44, 20), (56, 20)],
+        "ST": [(40, 18), (60, 18)],
     },
 }
 
@@ -55,13 +56,13 @@ PITCH_CSS = """
 .pitch-wrapper {
     position: relative;
     width: 100%;
-    max-width: 640px;
-    margin: 0 auto 1.2rem auto;
+    max-width: 960px;
+    margin: 0 auto 2.4rem auto;
 }
 .pitch-surface {
     position: relative;
     width: 100%;
-    padding-top: 150%;
+    padding-top: 120%;
     border-radius: 16px;
     background: linear-gradient(135deg, #0b6b29 0%, #13813d 100%);
     box-shadow: inset 0 0 0 3px rgba(255,255,255,0.4), 0 12px 32px rgba(0,0,0,0.25);
@@ -118,16 +119,6 @@ PITCH_CSS = """
 }
 </style>
 """
-
-_PITCH_CSS_INJECTED = False
-
-
-def inject_pitch_css() -> None:
-    global _PITCH_CSS_INJECTED
-    if _PITCH_CSS_INJECTED:
-        return
-    st.markdown(PITCH_CSS, unsafe_allow_html=True)
-    _PITCH_CSS_INJECTED = True
 
 
 def roster_rows(players) -> List[Dict[str, Any]]:
@@ -298,6 +289,56 @@ def formation_slots(formation: str) -> List[str]:
     for pos, count in config.items():
         slots.extend([pos] * count)
     return slots
+
+
+def render_formation_chart(team: "Team") -> None:
+    formation = team.formation
+    layout = FORMATION_LAYOUTS.get(formation)
+    slots = formation_slots(formation)
+    if not layout or not slots:
+        st.info(f"No formation chart available for {formation}.")
+        return
+
+    starters = list(team.starters)
+    if len(starters) < len(slots):
+        starters.extend([None] * (len(slots) - len(starters)))
+
+    used_counts: Dict[str, int] = {}
+    card_html: List[str] = []
+    fallback_coords = (50.0, 50.0)
+    for player, pos in zip(starters, slots):
+        options = layout.get(pos, [])
+        idx = used_counts.get(pos, 0)
+        if options:
+            coord_idx = min(idx, len(options) - 1)
+            x, y = options[coord_idx]
+        else:
+            x, y = fallback_coords
+        used_counts[pos] = idx + 1
+
+        if player is None:
+            name = html.escape(pos)
+            meta = "Slot vacant"
+        else:
+            name = html.escape(player.name)
+            meta = f"{pos} · {player.rating} OVR"
+
+        card_html.append(
+            f'<div class="pitch-player" style="left:{x}%; top:{y}%;">'
+            f'<div class="pitch-player__name">{name}</div>'
+            f'<div class="pitch-player__meta">{html.escape(meta)}</div>'
+            "</div>"
+        )
+
+    markup = (
+        f"{PITCH_CSS}"
+        "<div class='pitch-wrapper'>"
+        "<div class='pitch-surface'>"
+        f"{''.join(card_html)}"
+        "</div>"
+        "</div>"
+    )
+    components.html(markup, height=1200, scrolling=False)
 
 
 def render_reserves_with_actions(
