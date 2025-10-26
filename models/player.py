@@ -42,14 +42,14 @@ class Player:
             grow = random.randint(1, 5)
             self.rating = min(self.potential, self.rating + grow)
         elif self.age < 34:
-            grow = random.randint(0, 4)
+            grow = random.randint(1, 4)
             self.rating = min(self.potential, self.rating + grow)
         else:
             drop = random.randint(0, 4)
             self.rating = max(50, self.rating - drop)
 
         # 25% chance to permanently reveal potential range if not already visible
-        if not getattr(self, "display_potential_range", False) and random.random() < 0.25:
+        if not getattr(self, "display_potential_range", False) and random.random() < 0.30:
             self.display_potential_range = True
 
         self.age += 1

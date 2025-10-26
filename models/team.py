@@ -163,44 +163,20 @@ class Team:
             add_player(self.reserves, RESERVES - len(self.reserves))
 
     def weakest_positions(self):
-        pool = self.starters + self.bench
-        if not pool:
+        # Rank only positions present in the current starters
+        if not self.starters:
             return ["ST", "CB", "CM"]
 
-        needs = []
-        formation_positions = FORMATIONS.get(self.formation, {})
+        # Average rating per position among starters
+        pos_ratings = {}
+        for p in self.starters:
+            pos_ratings.setdefault(p.pos, []).append(p.rating)
 
-        for pos in formation_positions.keys():
-            players = [p for p in pool if p.pos == pos]
-            count = len(players)
-            avg_rating = (sum(p.rating for p in players) / count) if count else 0
+        avg_by_pos = {pos: sum(r)/len(r) for pos, r in pos_ratings.items()}
 
-            # Prioritize positions with thin coverage first, then by low average rating
-            if count == 0:
-                coverage_priority = -2
-            elif count == 1:
-                coverage_priority = -1
-            else:
-                coverage_priority = 0
+        # Sort by lowest avg rating, take top 3
+        return [pos for pos, _ in sorted(avg_by_pos.items(), key=lambda x: x[1])][:3]
 
-            needs.append((coverage_priority, avg_rating, pos))
-
-        needs.sort(key=lambda item: (item[0], item[1]))
-        weakest = [pos for _, _, pos in needs][:3]
-
-        # Fallback: include other roster positions if formation list was short
-        if len(weakest) < 3:
-            remaining = [
-                p.pos for p in pool
-                if p.pos not in weakest
-            ]
-            for pos in remaining:
-                if pos not in weakest:
-                    weakest.append(pos)
-                if len(weakest) == 3:
-                    break
-
-        return weakest
 
     def pay(self, amount):
         if amount > self.budget:

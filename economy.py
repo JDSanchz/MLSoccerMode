@@ -12,12 +12,7 @@ def process_rewards_penalties(table):
     # Objective bonus
     for pos, t in enumerate(table, start=1):
         if pos <= getattr(t, "objective", 0):
-            t.receive(5)
-
-    # Just-missed penalty
-    for pos, t in enumerate(table, start=1):
-        if pos == getattr(t, "objective", 0) + 1:
-            t.budget = int(t.budget * 0.85)
+            t.receive(10)
 
     # Track dynasty streaks (3+ consecutive top-3 finishes)
     dynasty_exists = False
@@ -27,6 +22,14 @@ def process_rewards_penalties(table):
         if t.top3_streak >= 3:
             dynasty_exists = True
 
+    # Randomly boost two teams outside the top 3 to avoid stagnation
+    non_podium = [t for pos, t in enumerate(table, start=1) if pos > 3]
+    if non_podium:
+        bonus_recipients = random.sample(non_podium, k=min(2, len(non_podium)))
+        for beneficiary in bonus_recipients:
+            beneficiary.receive(50)
+            print(f"Lottery Bonus: {beneficiary.name} receives €50M")
+
     # If a dynasty exists, invest €120M in a random team from the 5 lowest-rated OUTSIDE top 3
     if dynasty_exists:
         non_top3 = [t for pos, t in enumerate(table, start=1) if pos > 3]
@@ -35,4 +38,3 @@ def process_rewards_penalties(table):
             beneficiary = random.choice(lowest_eligible)
             beneficiary.receive(150)
             print(f"\nInternational Investment: {beneficiary.name} receives €150M")
-
