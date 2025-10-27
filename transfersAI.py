@@ -43,25 +43,22 @@ def ai_transfers(team, free_agents):
 
     organize_squad(team)
 
+    def capture_needs():
+        """Return (display_order, priority_order)."""
+        details = team.weakest_positions(return_details=True)
+        if not details:
+            return [], []
+        priority = sorted(details, key=lambda item: (item["delta"], -item["avg"]), reverse=True)
+        return [d["pos"] for d in details], [d["pos"] for d in priority]
+
     n_transfers = random.randint(1, 3)
-
-    def sample_need_positions(exclude=None):
-        weak = team.weakest_positions()
-        if exclude:
-            filtered = [pos for pos in weak if pos != exclude]
-            weak = filtered if filtered else weak  # fall back if exclusion empties list
-        return random.sample(weak, k=min(2, len(weak))) if weak else []
-
-    pick_positions = sample_need_positions()
+    lock_primary_need = False
 
     # If planned multi-signing leaves < €40M per signing, do just one
     if n_transfers > 1 and (team.budget // n_transfers) < 40:
         n_transfers = 1
-        # Focus positions: keep existing picks (or pick one strongest need)
-        if pick_positions:
-            pick_positions = [pick_positions[0]]
+        lock_primary_need = True
 
-    last_position = None
 
     for i in range(n_transfers):
         # If budget dropped under €5M during the window, stop signing more
@@ -71,7 +68,17 @@ def ai_transfers(team, free_agents):
         if not free_agents:
             break
 
-        pick_positions = sample_need_positions(exclude=last_position)
+        weakest_by_avg, priority_by_delta = capture_needs()
+        if not priority_by_delta:
+            break
+        print(f"Weakest positions: {', '.join(weakest_by_avg)}")
+
+        if lock_primary_need:
+            target_positions = priority_by_delta[:1]
+        else:
+            target_positions = priority_by_delta[:2]
+        if not target_positions:
+            target_positions = priority_by_delta
 
         roster = team.all_players()
         total_rating = sum(p.rating for p in roster)
@@ -85,18 +92,29 @@ def ai_transfers(team, free_agents):
             if new_avg >= current_avg:
                 return True
             projected = getattr(player, "potential", player.rating)
-            return projected >= 87 and player.age < 25
+            return projected >= 87 and player.age < 26
 
         # Spend roughly a fraction of remaining budget for this signing
         remaining = n_transfers - i
         val = max(1, team.budget // remaining)
 
-        same_pos = [p for p in free_agents
-                    if est_cost_eur(p.age, p.rating) <= val and p.pos in pick_positions]
+        same_pos = [
+            p for p in free_agents
+            if est_cost_eur(p.age, p.rating) <= val and p.pos in target_positions
+        ]
+
+        if not same_pos and not lock_primary_need:
+            remaining_targets = [pos for pos in priority_by_delta if pos not in target_positions]
+            if remaining_targets:
+                same_pos = [
+                    p for p in free_agents
+                    if est_cost_eur(p.age, p.rating) <= val and p.pos in remaining_targets
+                ]
 
         candidates = same_pos if same_pos else [
             p for p in free_agents if est_cost_eur(p.age, p.rating) <= val
         ]
+        print(f"Available candidates: {len(candidates)}")
         if not candidates:
             continue
 
@@ -104,7 +122,7 @@ def ai_transfers(team, free_agents):
         if not viable:
             continue
 
-        # Prefer top-rated affordable targets; add a little randomness
+        # Prefer top-rated affordable targets;  add a little randomness
         target_pool = sorted(viable, key=lambda x: x.rating, reverse=True)[:6]
         signing = random.choice(target_pool)
         price = est_cost_eur(signing.age, signing.rating)
@@ -115,16 +133,15 @@ def ai_transfers(team, free_agents):
             print(f"📝 {team.name} signed {signing.name} ({signing.pos}, {signing.rating} OVR, Age {signing.age}) "
           f"for €{price:,}M.")
             organize_squad(team)
-            last_position = signing.pos
 
 
 def champion_poach_user(
     prev_table,
     user,
-    top_chance=0.70,
-    bottom_chance=0.20,
+    top_chance=0.90,
+    bottom_chance=0.30,
     premium_rate=0.15,
-    free_roll_chance=0.90
+    free_roll_chance=0.95
 ):
     if not prev_table or not user.all_players():
         return
@@ -215,12 +232,12 @@ def champion_poach_user(
             return pot if pot >= p.rating else p.rating + pot
         return p.rating
 
-    # ---------- Roll 1: 70% — richest top-3 non-user teams buy affordable top-3 ----------
+    # ---------- Roll 1: 70% — richest top-2 non-user teams buy affordable top-3 ----------
     if random.random() < top_chance:
         non_user = [t for t in prev_table if t is not user]
-        richest_top3 = sorted(non_user, key=lambda t: t.budget, reverse=True)[:3]
-        if richest_top3:
-            buyer = random.choice(richest_top3)
+        richest_top2 = sorted(non_user, key=lambda t: t.budget, reverse=True)[:2]
+        if richest_top2:
+            buyer = random.choice(richest_top2)
             affordable = []
             for p in user.all_players():
                 if p in protected:
@@ -248,7 +265,7 @@ def champion_poach_user(
                 base, prem, total = est_price_with_premium(target)
                 remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=True)
 
-    # ---------- Roll 3: 60% — free move if >3 reserves rated >81 to lowest-avg team ----------
+    # ---------- Roll 3: 95% — free move if >3 reserves rated >81 to lowest-avg team ----------
     if random.random() < free_roll_chance:
         strong_reserves = [p for p in user.reserves if p.rating > 81 and p not in protected]
         candidates = [t for t in prev_table if t is not user]
@@ -278,7 +295,7 @@ def make_free_agent_pool(num=70):
         return Player(random_name(nation), pos, nation, age, rating, pot - rating)
 
     # Create full pool
-    pool = [make_player(random.choice(base_positions), 18, 35, 74, 88) for _ in range(num)]
+    pool = [make_player(random.choice(base_positions), 18, 34, 74, 88) for _ in range(num)]
 
     # 1) Remove 5 lowest-rated players age ≥ 30
     over29 = [p for p in pool if p.age >= 30]

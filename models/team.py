@@ -92,10 +92,11 @@ class Team:
             self.poach_protected.remove(player)
 
     def generate_initial_squad(self):
-        # Build XI positions from formation
+        # Build XI positions from formation, assign randomly so initial strengths vary
         xi_positions = []
         for pos, c in FORMATIONS[self.formation].items():
             xi_positions += [pos] * c
+        random.shuffle(xi_positions)
 
         # Generate ratings for Starters + Bench, centered on team average
         total_needed = STARTERS + BENCH
@@ -162,20 +163,67 @@ class Team:
         if len(self.reserves) < RESERVES:
             add_player(self.reserves, RESERVES - len(self.reserves))
 
-    def weakest_positions(self):
-        # Rank only positions present in the current starters
+    def weakest_positions(self, return_details=False):
+        """
+        Identify the soft spots in the XI. If a formation slot has no natural player,
+        treat it as rating 0 so we surface true gaps (e.g., missing LB entirely).
+        Also print a short diagnostic explaining why each returned position needs help.
+        Set return_details=True to get the rich records used for prioritisation.
+        """
         if not self.starters:
-            return ["ST", "CB", "CM"]
+            print(f"{self.name}: weakest_positions fallback (no starters set) -> ST, CB, CM.")
+            fallback = [
+                {"pos": "ST", "avg": self.avg_target, "count": 0, "delta": 0},
+                {"pos": "CB", "avg": self.avg_target, "count": 0, "delta": 0},
+                {"pos": "CM", "avg": self.avg_target, "count": 0, "delta": 0},
+            ]
+            return fallback if return_details else [item["pos"] for item in fallback]
 
-        # Average rating per position among starters
-        pos_ratings = {}
-        for p in self.starters:
-            pos_ratings.setdefault(p.pos, []).append(p.rating)
+        formation = FORMATIONS.get(self.formation, {})
+        if not formation:
+            return ["ST", "CB", "CM"] if not return_details else []
 
-        avg_by_pos = {pos: sum(r)/len(r) for pos, r in pos_ratings.items()}
+        tracked_positions = {pos: [] for pos in formation.keys()}
 
-        # Sort by lowest avg rating, take top 3
-        return [pos for pos, _ in sorted(avg_by_pos.items(), key=lambda x: x[1])][:3]
+        xi_slots = []
+        for pos, count in formation.items():
+            xi_slots.extend([pos] * count)
+
+        for idx, slot in enumerate(xi_slots):
+            player = self.starters[idx] if idx < len(self.starters) else None
+            if player:
+                tracked_positions[slot].append(player.rating)
+
+        xi_avg = sum(p.rating for p in self.starters) / len(self.starters)
+        scored = []
+        for pos, ratings in tracked_positions.items():
+            avg = sum(ratings) / len(ratings) if ratings else 0
+            scored.append(
+                {
+                    "pos": pos,
+                    "avg": avg,
+                    "count": len(ratings),
+                    "delta": xi_avg - avg,
+                }
+            )
+
+        scored.sort(key=lambda item: item["avg"])
+        weakest = scored[:3]
+
+        for info in weakest:
+            pos = info["pos"]
+            if info["count"] == 0:
+                reason = "no natural player for required formation slot."
+            else:
+                reason = (
+                    f"avg starter rating {info['avg']:.1f} vs XI avg {xi_avg:.1f} "
+                    f"({info['delta']:+.1f})."
+                )
+            print(f"{self.name}: need {pos} — {reason}")
+
+        if return_details:
+            return weakest
+        return [item["pos"] for item in weakest]
 
 
     def pay(self, amount):

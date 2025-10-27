@@ -8,8 +8,8 @@ TEAMS_INIT = [
     {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 3, "formation": "4-3-3", "stadium": "Emirates Stadium"},
     {"name": "Inter Milan",      "avg": 85, "budget": 70, "objective": 4, "formation": "3-5-2", "stadium": "San Siro"},
     {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 4, "formation": "4-3-3", "stadium": "Stamford Bridge"},
-    {"name": "Porto",            "avg": 82, "budget": 30, "objective": 9, "formation": "4-3-3", "stadium": "Do Dragao"},
-    {"name": "Olympique Lyonnais",       "avg": 80, "budget": 30, "objective": 10, "formation": "4-3-3", "stadium": "Stade Geoffroy Guichard"},
+    {"name": "Porto",            "avg": 82, "budget": 50, "objective": 9, "formation": "4-3-3", "stadium": "Do Dragao"},
+    {"name": "Lens",       "avg": 80, "budget": 50, "objective": 11, "formation": "4-4-2", "stadium": "Stade de la Meinau"},
     {"name": "Atletico Madrid",     "avg": 85, "budget": 120, "objective": 4, "formation": "4-4-2", "stadium": "Wanda Metropolitano"},
 ]
 
@@ -24,7 +24,7 @@ ORIGINS = {
     "Porto": ["Portugal","Mexico","Brazil","Netherlands","Nigeria"],
     "Inter Milan": ["Italy","France","Brazil","Netherlands","Uruguay"],
     "Napoli": ["Italy","France","Brazil","Nigeria","Belgium"],
-    "Olympique Lyonnais": ["France","Morocco","Argentina","Belgium","Mexico"],
+    "Lens": ["France","Morocco","Spain","Belgium","Nigeria"],
     "Atletico Madrid": ["Spain","Belgium","Argentina","Netherlands","Brazil"],
 }
 
@@ -41,6 +41,6 @@ RESERVES = 11
 
 # Youth new-season additions
 YOUTH_OVR_MIN, YOUTH_OVR_MAX = 70, 74
-YOUTH_AGE_MIN, YOUTH_AGE_MAX = 16, 24
+YOUTH_AGE_MIN, YOUTH_AGE_MAX = 16, 23
 YOUTH_POT_USER = (77, 95)
-YOUTH_POT_AI   = (78, 92)
+YOUTH_POT_AI   = (80, 93)

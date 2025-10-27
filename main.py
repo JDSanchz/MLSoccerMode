@@ -89,7 +89,6 @@ def main():
         for i, t in enumerate(table, start=1):
             print(f"{i:>2}. {t.name:<18} {t.points:>3}  {t.gf:>3} {t.ga:>3} {t.gf-t.ga:>3}   {t.avg_rating():>9}  €{t.budget:,}")
 
-        process_rewards_penalties(table)
         season_end_retirements(teams)
 
         for t in teams:
@@ -100,7 +99,9 @@ def main():
         for t in teams:
             base = next_season_base_budget(t)
             t.budget = base
-            print(f"{t.name:<18} -> Base Budget: €{t.budget:,}")
+        
+        process_rewards_penalties(table)
+        
 
         forced_switch = False
         firing_message = None

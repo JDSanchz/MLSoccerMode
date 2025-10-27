@@ -27,14 +27,20 @@ def process_rewards_penalties(table):
     if non_podium:
         bonus_recipients = random.sample(non_podium, k=min(2, len(non_podium)))
         for beneficiary in bonus_recipients:
-            beneficiary.receive(50)
-            print(f"Lottery Bonus: {beneficiary.name} receives €50M")
+            bonus = 200 if random.random() < 0.15 else 50
+            beneficiary.receive(bonus)
+            print(f"Lottery Bonus: {beneficiary.name} receives €{bonus}M")
 
-    # If a dynasty exists, invest €120M in a random team from the 5 lowest-rated OUTSIDE top 3
+
+    # If a dynasty exists, invest €120M in a random team from the 2 lowest-rated OUTSIDE top 3
     if dynasty_exists:
         non_top3 = [t for pos, t in enumerate(table, start=1) if pos > 3]
-        lowest_eligible = sorted(non_top3, key=lambda team: team.avg_rating())[:5]
+        lowest_eligible = sorted(non_top3, key=lambda team: team.avg_rating())[:2]
         if lowest_eligible:
             beneficiary = random.choice(lowest_eligible)
-            beneficiary.receive(150)
-            print(f"\nInternational Investment: {beneficiary.name} receives €150M")
+            beneficiary.receive(200)
+            print(f"\nInternational Investment: {beneficiary.name} receives €200M")
+
+    print('Next Season Budgets')
+    for t in table:
+        print(f"{t.name}: {t.budget:,}")
