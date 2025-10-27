@@ -51,7 +51,7 @@ def ai_transfers(team, free_agents):
         priority = sorted(details, key=lambda item: (item["delta"], -item["avg"]), reverse=True)
         return [d["pos"] for d in details], [d["pos"] for d in priority]
 
-    n_transfers = random.randint(1, 3)
+    n_transfers = random.randint(2, 3)
     lock_primary_need = False
 
     # If planned multi-signing leaves < €40M per signing, do just one

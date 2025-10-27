@@ -16,7 +16,7 @@ from survey import *
 
 BOARD_FIRING_MESSAGES = [
     "Board Statement: {team} cannot overlook missing our objective. Your contract is terminated immediately.",
-    "Chairman's Briefing: Results fell short at {team}. We are making a managerial change with immediate effect.",
+    "Chairman’s Briefing: {team} has failed to meet expectations. The manager has been dismissed effective immediately. Unacceptable performance.",
     "Press Release: {team}'s board thanks you for your efforts but dismisses you after failing to meet expectations.",
 ]
 
@@ -107,7 +107,7 @@ def main():
         firing_message = None
         user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
         if user_pos is not None and user_pos > user.objective:
-            if random.random() < 0.13:
+            if random.random() < 0.09:
                 forced_switch = True
                 firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
 
@@ -117,12 +117,6 @@ def main():
             user = manager_switch_option(user, table, forced=False)
         prev_table = table[:]
         year += 1
-
-        cont = yesno("\nRun another season? (y/n): ")
-
-        if not cont:
-            print("Thanks for playing!")
-            break
 
 if __name__ == "__main__":
     main()

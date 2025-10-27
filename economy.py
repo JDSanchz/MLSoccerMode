@@ -4,6 +4,12 @@ def next_season_base_budget(t):
 
 
 def process_rewards_penalties(table):
+    if not table:
+        print("\n=== NEXT SEASON BUDGETS ===\n(no teams registered)")
+        return
+
+    events = []
+
     # Rewards for top 3
     if len(table) >= 1: table[0].receive(70)
     if len(table) >= 2: table[1].receive(60)
@@ -29,7 +35,7 @@ def process_rewards_penalties(table):
         for beneficiary in bonus_recipients:
             bonus = 200 if random.random() < 0.15 else 50
             beneficiary.receive(bonus)
-            print(f"Lottery Bonus: {beneficiary.name} receives €{bonus}M")
+            events.append(("Lottery Bonus", beneficiary.name, bonus))
 
 
     # If a dynasty exists, invest €120M in a random team from the 2 lowest-rated OUTSIDE top 3
@@ -39,8 +45,20 @@ def process_rewards_penalties(table):
         if lowest_eligible:
             beneficiary = random.choice(lowest_eligible)
             beneficiary.receive(200)
-            print(f"\nInternational Investment: {beneficiary.name} receives €200M")
+            events.append(("International Investment", beneficiary.name, 200))
 
-    print('Next Season Budgets')
-    for t in table:
-        print(f"{t.name}: {t.budget:,}")
+    sorted_table = sorted(table, key=lambda team: team.budget, reverse=True)
+    name_width = max(len(team.name) for team in sorted_table)
+    budget_strings = [f"€{team.budget:,}M" for team in sorted_table]
+    budget_width = max(len("Budget"), max(len(display) for display in budget_strings))
+
+    if events:
+        print("\n=== FINANCIAL EVENTS ===")
+        for label, name, amount in events:
+            print(f"- {label:<24} {name:<{name_width}} +€{amount:,}M")
+
+    print("\n=== NEXT SEASON BASE BUDGETS (APPLIED) ===")
+    print(f"{'Team'.ljust(name_width)}  {'Budget'.rjust(budget_width)}")
+    print(f"{'-' * name_width}  {'-' * budget_width}")
+    for team, budget_display in zip(sorted_table, budget_strings):
+        print(f"{team.name.ljust(name_width)}  {budget_display.rjust(budget_width)}")

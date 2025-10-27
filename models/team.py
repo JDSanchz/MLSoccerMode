@@ -155,7 +155,12 @@ class Team:
                 ovr = random.randint(YOUTH_OVR_MIN, YOUTH_OVR_MAX)
                 pot_min, pot_max = (YOUTH_POT_USER if is_user else YOUTH_POT_AI)
                 potential_plus = random.randint(max(1, pot_min - ovr), max(1, pot_max - ovr))
-                name = "❖ " + random_name(nation)  # youth tag here
+                potential = ovr + potential_plus
+                if potential > 91 and random.randint(1, 20) != 1:
+                    potential = 91
+                    potential_plus = max(1, potential - ovr)
+                    tag = "❖ "  # normal youth
+                name = tag + random_name(nation)
                 target_list.append(Player(name, pos, nation, age, ovr, potential_plus))
 
         if len(self.bench) < BENCH:
