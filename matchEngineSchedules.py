@@ -26,14 +26,10 @@ def frisa_dates(start, end):
 
 def match_probabilities(rA, rB, venue):
     home_adv = 1.4
-    if venue == "homeA":
-        rA += home_adv
-        rB -= home_adv
-    elif venue == "homeB":
-        rB += home_adv
-        rA -= home_adv
+    if venue == "homeA": rA, rB = rA + home_adv, rB - home_adv
+    elif venue == "homeB": rA, rB = rA - home_adv, rB + home_adv
 
-    gap = max(-10, min(10, rA - rB))
+    gap = max(-15, min(15, rA - rB))
     p_draw = max(0.12, min(0.28 - 0.015 * abs(gap), 0.28))
     T = 5.5
 
