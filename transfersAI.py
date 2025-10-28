@@ -301,7 +301,7 @@ def champion_poach_user(
 
 
 
-def make_free_agent_pool(num=80):
+def make_free_agent_pool(num=75):
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
     all_origins = [n for arr in ORIGINS.values() for n in arr]
 
@@ -310,7 +310,10 @@ def make_free_agent_pool(num=80):
 
     def roll_potential(rating):
         pot = random.randint(79, 94)
-        return max(rating + 1, pot) if pot <= rating else pot
+        pot = max(rating + 1, pot) if pot <= rating else pot
+        if pot > 91 and random.randint(1, 20) != 1:  # 95% cap at 91
+            pot = 91
+        return pot
 
     def make_player(pos, age_lo, age_hi, rating_lo, rating_hi):
         nation = pick_origin()
