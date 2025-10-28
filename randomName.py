@@ -15,7 +15,7 @@ NAME_BANK = {
     "Argentina": {
         "male": ["Mateo","Thiago","Santiago","Juan","Lucas","Benjamín","Joaquín","Bruno","Franco","Emiliano",
                  "Tomás","Agustín","Facundo","Nicolás","Matías","Diego","Gonzalo","Iñaki","Ramiro","Lautaro","Enzo","Martín"],
-        "last": ["González","Rodríguez","Gómez","Fernández","López","Díaz","Martínez","Sosa","Pérez","Romero","Álvarez","Torres"]
+        "last": ["González","Rodríguez","Gómez","Fernández","López","Díaz","Martínez","Sosa","Pérez","Romero","Álvarez","Torres","Suárez"]
     },
     "Belgium": {
         "male": ["Lars","Arthur","Victor","Noah","Louis","Jens","Matteo","Bram","Milan","Thibault",

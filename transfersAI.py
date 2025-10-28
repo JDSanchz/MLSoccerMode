@@ -51,6 +51,29 @@ def ai_transfers(team, free_agents):
         priority = sorted(details, key=lambda item: (item["delta"], -item["avg"]), reverse=True)
         return [d["pos"] for d in details], [d["pos"] for d in priority]
 
+    def try_sign_future_star():
+        prospects = [
+            p for p in free_agents
+            if p.age < 23 and getattr(p, "potential", p.rating) > 90
+        ]
+        if not prospects:
+            return False
+        prospects.sort(
+            key=lambda x: (getattr(x, "potential", x.rating), x.rating),
+            reverse=True,
+        )
+        for prospect in prospects:
+            price = est_cost_eur(prospect.age, prospect.rating)
+            if price > team.budget:
+                continue
+            if team.pay(price):
+                free_agents.remove(prospect)
+                team.reserves.append(prospect)
+                print(f"{team.name} has signed {prospect.name} a future start")
+                organize_squad(team)
+                return True
+        return False
+
     n_transfers = random.randint(1, 3)
     lock_primary_need = False
 
@@ -116,10 +139,12 @@ def ai_transfers(team, free_agents):
         ]
         print(f"Available candidates: {len(candidates)}")
         if not candidates:
+            try_sign_future_star()
             continue
 
         viable = [p for p in candidates if acceptable(p)]
         if not viable:
+            try_sign_future_star()
             continue
 
         # Prefer top-rated affordable targets;  add a little randomness

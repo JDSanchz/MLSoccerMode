@@ -33,7 +33,7 @@ def process_rewards_penalties(table):
     if non_podium:
         bonus_recipients = random.sample(non_podium, k=min(2, len(non_podium)))
         for beneficiary in bonus_recipients:
-            bonus = 200 if random.random() < 0.15 else 50
+            bonus = 75 if random.random() < 0.25 else 50
             beneficiary.receive(bonus)
             events.append(("Lottery Bonus", beneficiary.name, bonus))
 

@@ -106,8 +106,11 @@ def main():
         forced_switch = False
         firing_message = None
         user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
+        fire_chance = 0.12
+        if getattr(user, "top3_streak", 0) >= 2:
+            fire_chance = 0.05
         if user_pos is not None and user_pos > user.objective:
-            if random.random() < 0.09:
+            if random.random() < fire_chance:
                 forced_switch = True
                 firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
 
