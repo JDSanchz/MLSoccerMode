@@ -19,6 +19,10 @@ BOARD_FIRING_MESSAGES = [
     "Chairman’s Briefing: {team} has failed to meet expectations. The manager has been dismissed effective immediately. Unacceptable performance.",
     "Press Release: {team}'s board thanks you for your efforts but dismisses you after failing to meet expectations.",
 ]
+BOARD_TENURE_FIRING_MESSAGE = (
+    "Board Bulletin: {team} has endured {seasons} seasons without meeting objectives. "
+    "The club parts ways with you effective immediately."
+)
 
 def standings_table(teams):
     return sorted(teams, key=lambda t: (t.points, t.gf - t.ga, t.gf), reverse=True)
@@ -32,6 +36,10 @@ def apply_retirements(teams):
                 if not must_retire:
                     keep.append(p)
         t.starters, t.bench, t.reserves = keep_starters, keep_bench, keep_res
+
+def reset_user_manager_tenure(team):
+    team.user_manager_seasons = 0
+    team.user_manager_objective_met = False
 
 # =========================
 # MAIN FLOW (CONTINUOUS SEASONS)
@@ -47,6 +55,7 @@ def main():
         print(f"  {i+1}. {t.name}  (Avg {t.avg_target}, Budget €{t.budget:,}, Obj {t.objective}, {t.formation})")
     me_idx = prompt_int("Choice: ", 1, len(teams)) - 1
     user = teams[me_idx]
+    reset_user_manager_tenure(user)
     print(f"\nYou manage {user.name}.\n")
 
     year = INIT_YEAR
@@ -103,21 +112,37 @@ def main():
         process_rewards_penalties(table)
         
 
+        user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
+        if user_pos is not None:
+            user.user_manager_seasons += 1
+            if user_pos <= user.objective:
+                user.user_manager_objective_met = True
+
         forced_switch = False
         firing_message = None
-        user_pos = next((i for i, t in enumerate(table, start=1) if t is user), None)
-        fire_chance = 0.12
-        if getattr(user, "top3_streak", 0) >= 2:
-            fire_chance = 0.05
-        if user_pos is not None and user_pos > user.objective:
-            if random.random() < fire_chance:
-                forced_switch = True
-                firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
-
-        if forced_switch:
-            user = manager_switch_option(user, table, forced=True, firing_message=firing_message)
+        if user.user_manager_seasons > 5 and not user.user_manager_objective_met:
+            forced_switch = True
+            firing_message = BOARD_TENURE_FIRING_MESSAGE.format(
+                team=user.name,
+                seasons=user.user_manager_seasons,
+            )
         else:
-            user = manager_switch_option(user, table, forced=False)
+            fire_chance = 0.12
+            if getattr(user, "top3_streak", 0) >= 2:
+                fire_chance = 0.05
+            if user_pos is not None and user_pos > user.objective:
+                if random.random() < fire_chance:
+                    forced_switch = True
+                    firing_message = random.choice(BOARD_FIRING_MESSAGES).format(team=user.name)
+
+        previous_user = user
+        if forced_switch:
+            new_user = manager_switch_option(user, table, forced=True, firing_message=firing_message)
+        else:
+            new_user = manager_switch_option(user, table, forced=False)
+        if new_user is not previous_user:
+            reset_user_manager_tenure(new_user)
+        user = new_user
         prev_table = table[:]
         year += 1
 

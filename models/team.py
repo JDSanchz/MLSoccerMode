@@ -53,6 +53,8 @@ class Team:
         self.ga = 0
         self.top3_streak = 0
         self.poach_protected = []
+        self.user_manager_seasons = 0
+        self.user_manager_objective_met = False
 
     def reset_season_stats(self):
         self.points = 0

@@ -8,8 +8,8 @@ TEAMS_INIT = [
     {"name": "Arsenal",         "avg": 86, "budget": 200, "objective": 3, "formation": "4-3-3", "stadium": "Emirates Stadium"},
     {"name": "Inter Milan",      "avg": 85, "budget": 70, "objective": 4, "formation": "3-5-2", "stadium": "San Siro"},
     {"name": "Chelsea",         "avg": 84, "budget": 180, "objective": 4, "formation": "4-3-3", "stadium": "Stamford Bridge"},
-    {"name": "Porto",            "avg": 82, "budget": 50, "objective": 9, "formation": "4-3-3", "stadium": "Do Dragao"},
-    {"name": "Lens",       "avg": 80, "budget": 50, "objective": 11, "formation": "4-4-2", "stadium": "Stade de la Meinau"},
+    {"name": "Porto",            "avg": 82, "budget": 50, "objective": 8, "formation": "4-3-3", "stadium": "Do Dragao"},
+    {"name": "Lens",       "avg": 80, "budget": 50, "objective": 9, "formation": "4-4-2", "stadium": "Stade de la Meinau"},
     {"name": "Atletico Madrid",     "avg": 85, "budget": 120, "objective": 4, "formation": "4-4-2", "stadium": "Wanda Metropolitano"},
 ]
 
