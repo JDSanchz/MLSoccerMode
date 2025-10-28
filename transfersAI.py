@@ -311,7 +311,7 @@ def make_free_agent_pool(num=75):
     def roll_potential(rating):
         pot = random.randint(79, 94)
         pot = max(rating + 1, pot) if pot <= rating else pot
-        if pot > 91 and random.randint(1, 20) != 1:  # 95% cap at 91
+        if pot > 91 and random.randint(1, 25) != 1:  # 98% cap at 91
             pot = 91
         return pot
 
