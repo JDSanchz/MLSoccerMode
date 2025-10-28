@@ -159,7 +159,7 @@ class Team:
                 if potential > 91 and random.randint(1, 20) != 1:
                     potential = 91
                     potential_plus = max(1, potential - ovr)
-                    tag = "❖ "  # normal youth
+                tag = "❖ "  # normal youth
                 name = tag + random_name(nation)
                 target_list.append(Player(name, pos, nation, age, ovr, potential_plus))
 

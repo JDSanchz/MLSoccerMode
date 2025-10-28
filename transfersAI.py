@@ -51,7 +51,7 @@ def ai_transfers(team, free_agents):
         priority = sorted(details, key=lambda item: (item["delta"], -item["avg"]), reverse=True)
         return [d["pos"] for d in details], [d["pos"] for d in priority]
 
-    n_transfers = random.randint(2, 3)
+    n_transfers = random.randint(1, 3)
     lock_primary_need = False
 
     # If planned multi-signing leaves < €40M per signing, do just one
@@ -232,7 +232,7 @@ def champion_poach_user(
             return pot if pot >= p.rating else p.rating + pot
         return p.rating
 
-    # ---------- Roll 1: 70% — richest top-2 non-user teams buy affordable top-3 ----------
+    # ---------- Roll 1: 90% — richest top-2 non-user teams buy affordable top-3 ----------
     if random.random() < top_chance:
         non_user = [t for t in prev_table if t is not user]
         richest_top2 = sorted(non_user, key=lambda t: t.budget, reverse=True)[:2]
@@ -251,7 +251,7 @@ def champion_poach_user(
                 base, prem, _ = est_price_with_premium(target)
                 remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=False)
 
-    # ---------- Roll 2: 20% — bottom-3 in table buy from top-5 potential reserves (can go negative) ----------
+    # ---------- Roll 2: 30% — bottom-3 in table buy from top-5 potential reserves (can go negative) ----------
     if random.random() < bottom_chance:
         bottom3 = [t for t in prev_table[-3:] if t is not user]
         if bottom3 and user.reserves:
@@ -276,7 +276,7 @@ def champion_poach_user(
 
 
 
-def make_free_agent_pool(num=70):
+def make_free_agent_pool(num=80):
     base_positions = ["GK", "CB", "LB", "RB", "CDM", "CAM", "CM", "ST", "LW", "RW"]
     all_origins = [n for arr in ORIGINS.values() for n in arr]
 
