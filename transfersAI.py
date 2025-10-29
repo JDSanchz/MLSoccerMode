@@ -258,6 +258,7 @@ def champion_poach_user(
         return p.rating
 
     # ---------- Roll 1: 90% — richest top-2 non-user teams buy affordable top-3 ----------
+    double_poach_chance = 0.30
     if random.random() < top_chance:
         non_user = [t for t in prev_table if t is not user]
         richest_top2 = sorted(non_user, key=lambda t: t.budget, reverse=True)[:2]
@@ -274,7 +275,29 @@ def champion_poach_user(
                 top3_affordable = sorted(affordable, key=lambda pt: pt[0].rating, reverse=True)[:3]
                 target, total = random.choice(top3_affordable)
                 base, prem, _ = est_price_with_premium(target)
-                remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=False)
+                poach_success = remove_from_user_and_add_to_buyer(target, buyer, base, prem, total, allow_negative=False)
+
+                if poach_success and random.random() < double_poach_chance:
+                    # Follow-up attempt: same buyer tries to poach another player 20% of the time
+                    followup_affordable = []
+                    for p in user.all_players():
+                        if p in protected:
+                            continue
+                        _, _, followup_total = est_price_with_premium(p)
+                        if followup_total <= buyer.budget:
+                            followup_affordable.append((p, followup_total))
+                    if followup_affordable:
+                        followup_top3 = sorted(followup_affordable, key=lambda pt: pt[0].rating, reverse=True)[:3]
+                        followup_target, followup_total = random.choice(followup_top3)
+                        followup_base, followup_prem, _ = est_price_with_premium(followup_target)
+                        remove_from_user_and_add_to_buyer(
+                            followup_target,
+                            buyer,
+                            followup_base,
+                            followup_prem,
+                            followup_total,
+                            allow_negative=False,
+                        )
 
     # ---------- Roll 2: 30% — bottom-3 in table buy from top-5 potential reserves (can go negative) ----------
     if random.random() < bottom_chance:

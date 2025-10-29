@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: mlsoccermode-ttyd
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: TTYD_CRED   # set in dashboard to avoid committing secrets
+        sync: false
+    # Uncomment if you need persistent saves/logs (paid plans only)
+    # disks:
+    #   - name: data
+    #     mountPath: /app/data
+    #     sizeGB: 1
